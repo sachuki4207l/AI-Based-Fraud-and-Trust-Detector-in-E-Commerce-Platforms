@@ -1,0 +1,41 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# ── SQLite database (runtime-generated) ───────────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+
+# ── Uploaded files (runtime user data) ────────────────────────────────────────
+uploads/products/*
+uploads/complaints/*
+uploads/embeddings/*
+!uploads/products/.gitkeep
+!uploads/complaints/.gitkeep
+!uploads/embeddings/.gitkeep
+
+# ── IDE / editor ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ── Environment variables ─────────────────────────────────────────────────────
+.env
+.env.*

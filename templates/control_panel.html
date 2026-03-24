@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TrustMart — Control Panel</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8fafc;color:#1e293b;margin:0}
+.tab-btn{padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:#64748b;white-space:nowrap;transition:all .15s}
+.tab-btn.on{border-bottom-color:#6366f1;color:#4338ca}
+.tab-btn:hover:not(.on){color:#334155}
+.pane{display:none}.pane.on{display:block}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px 22px;margin-bottom:14px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:5px}
+.field input,.field textarea,.field select{width:100%;border:1px solid #cbd5e1;border-radius:9px;padding:9px 12px;font-size:13px;color:#1e293b;background:#fff;outline:none;transition:border-color .15s}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.field .hint{font-size:11px;color:#94a3b8;margin-top:4px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:#6366f1;color:#fff}.btn-primary:hover{background:#4f46e5}
+.btn-success{background:#10b981;color:#fff}.btn-success:hover{background:#059669}
+.btn-danger{background:#ef4444;color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-warn{background:#f59e0b;color:#fff}.btn-warn:hover{background:#d97706}
+.btn-gray{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}.btn-gray:hover{background:#e2e8f0}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.response-box{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px 16px;font-family:monospace;font-size:12px;line-height:1.7;overflow-x:auto;max-height:340px;overflow-y:auto;margin-top:12px;white-space:pre-wrap;word-break:break-all}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:9999px;font-size:11px;font-weight:600}
+.badge-safe{background:#dcfce7;color:#166534}
+.badge-caution{background:#fef9c3;color:#854d0e}
+.badge-risk{background:#fee2e2;color:#991b1b}
+.badge-gray{background:#f1f5f9;color:#475569}
+.badge-blue{background:#eff6ff;color:#1d4ed8}
+.badge-purple{background:#f5f3ff;color:#5b21b6}
+.badge-done{background:#dcfce7;color:#166534}
+.badge-queued{background:#eff6ff;color:#1d4ed8}
+.spinner{width:16px;height:16px;border:2.5px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.step-num{width:28px;height:28px;border-radius:50%;background:#6366f1;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-done{background:#10b981}
+.section-title{font-size:13px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.result-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:8px;font-size:13px}
+.result-row:hover{border-color:#6366f1;background:#fafaf9}
+.trust-bar-wrap{height:8px;background:#e2e8f0;border-radius:9999px;overflow:hidden;flex:1;margin:0 10px}
+.trust-bar-fill{height:100%;border-radius:9999px;transition:width .8s ease}
+.alert{padding:12px 16px;border-radius:10px;font-size:13px;margin-bottom:12px}
+.alert-success{background:#f0fdf4;border:1px solid #86efac;color:#166534}
+.alert-error{background:#fef2f2;border:1px solid #fca5a5;color:#991b1b}
+.alert-info{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8}
+.divider{height:1px;background:#e2e8f0;margin:18px 0}
+.id-tag{background:#eff6ff;color:#3730a3;font-family:monospace;padding:2px 7px;border-radius:5px;font-size:12px;font-weight:600}
+.mismatch-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:9999px}
+.feature-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+.feature-bar{height:6px;background:#e2e8f0;border-radius:9999px;overflow:hidden;width:80px}
+.feature-bar-fill{height:100%;border-radius:9999px;transition:width .6s ease}
+.nav-logo{font-weight:800;font-size:17px;color:#4338ca}
+.workflow-step{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9}
+.workflow-step:last-child{border-bottom:none}
+pre{margin:0}
+.copy-btn{cursor:pointer;opacity:.5;font-size:10px;padding:2px 6px;background:#1e293b;border:1px solid #334155;border-radius:4px;color:#94a3b8}
+.copy-btn:hover{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- ── Top Nav ── -->
+<div style="background:#fff;border-bottom:1px solid #e2e8f0;padding:0 24px;position:sticky;top:0;z-index:100">
+  <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:54px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="background:#6366f1;color:#fff;font-weight:800;font-size:12px;padding:4px 8px;border-radius:7px">TM</div>
+      <span class="nav-logo">Control Panel</span>
+      <span style="background:#f1f5f9;color:#64748b;font-size:11px;padding:2px 8px;border-radius:9999px;font-weight:600">v3.0</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div id="health-dot" style="width:8px;height:8px;border-radius:50%;background:#94a3b8"></div>
+      <span id="health-label" style="font-size:12px;color:#64748b">Checking…</span>
+      <a href="/docs" target="_blank" class="btn btn-gray btn-sm">Swagger /docs</a>
+      <a href="/" class="btn btn-gray btn-sm">Frontend UI</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tab bar ── -->
+<div style="background:#fff;border-bottom:1px solid #e2e8f0;overflow-x:auto">
+  <div style="max-width:1100px;margin:0 auto;display:flex">
+    <button class="tab-btn on" onclick="switchTab('workflow')">📋 Workflow</button>
+    <button class="tab-btn" onclick="switchTab('sellers')">🏪 Sellers</button>
+    <button class="tab-btn" onclick="switchTab('buyers')">👤 Buyers</button>
+    <button class="tab-btn" onclick="switchTab('products')">📦 Products</button>
+    <button class="tab-btn" onclick="switchTab('complaints')">🚩 Complaints</button>
+    <button class="tab-btn" onclick="switchTab('advisory')">📊 Advisory</button>
+    <button class="tab-btn" onclick="switchTab('admin')">🛡 Admin</button>
+  </div>
+</div>
+
+<div style="max-width:1100px;margin:0 auto;padding:22px 20px">
+
+<!-- ════════════════════════════════════════════════════════
+     WORKFLOW TAB
+════════════════════════════════════════════════════════ -->
+<div id="pane-workflow" class="pane on">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <!-- Quick stats -->
+    <div class="card" style="padding:16px 20px">
+      <div class="section-title">System Overview</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" id="overview-stats">
+        <div style="text-align:center"><div style="font-size:26px;font-weight:800;color:#6366f1" id="ov-sellers">—</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Sellers</div></div>
+        <div style="text-align:center"><div style="font-size:26px;font-weight:800;color:#10b981" id="ov-buyers">—</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Buyers</div></div>
+        <div style="text-align:center"><div style="font-size:26px;font-weight:800;color:#f59e0b" id="ov-products">—</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Products</div></div>
+        <div style="text-align:center"><div style="font-size:26px;font-weight:800;color:#ef4444" id="ov-complaints">—</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Complaints</div></div>
+      </div>
+    </div>
+    <!-- AI Status -->
+    <div class="card" style="padding:16px 20px">
+      <div class="section-title">AI Engine</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div id="ai-icon" style="font-size:28px">🤖</div>
+        <div>
+          <div id="ai-model-name" style="font-weight:700;font-size:14px">Loading…</div>
+          <div id="ai-model-desc" style="font-size:11px;color:#94a3b8;margin-top:2px"></div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div style="font-size:11px;color:#94a3b8">DB</div>
+          <div id="db-backend" style="font-size:12px;font-weight:600;color:#475569">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step-by-step guide -->
+  <div class="card">
+    <div class="section-title">Complete Workflow Guide</div>
+    <div class="workflow-step">
+      <div class="step-num" id="ws-1">1</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">Create a Seller</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">Register a seller account. The system starts monitoring trust from this point.</div>
+        <div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="switchTab('sellers')">Go to Sellers →</button></div>
+      </div>
+    </div>
+    <div class="workflow-step">
+      <div class="step-num" id="ws-2">2</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">Create a Buyer</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">Register a buyer who will file complaints. Starts with credibility 100/100.</div>
+        <div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="switchTab('buyers')">Go to Buyers →</button></div>
+      </div>
+    </div>
+    <div class="workflow-step">
+      <div class="step-num" id="ws-3">3</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">Add a Product</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">List a product under the seller. Upload an image — the AI will compare it against complaint evidence.</div>
+        <div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="switchTab('products')">Go to Products →</button></div>
+      </div>
+    </div>
+    <div class="workflow-step">
+      <div class="step-num" id="ws-4">4</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">Submit a Complaint</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">File a complaint with an evidence image. The AI runs in the background and computes severity automatically.</div>
+        <div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="switchTab('complaints')">Go to Complaints →</button></div>
+      </div>
+    </div>
+    <div class="workflow-step">
+      <div class="step-num" id="ws-5">5</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">View Trust Report</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">Check the seller's real-time trust score, risk level, and the full feature vector that drove the decision.</div>
+        <div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="switchTab('advisory')">Go to Advisory →</button></div>
+      </div>
+    </div>
+    <div class="workflow-step">
+      <div class="step-num" id="ws-6">6</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">Admin Review</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px">Approve, reject, or mark complaints as spam. Watch buyer credibility and seller trust update in real time.</div>
+        <div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="switchTab('admin')">Go to Admin →</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     SELLERS TAB
+════════════════════════════════════════════════════════ -->
+<div id="pane-sellers" class="pane">
+  <div style="display:grid;grid-template-columns:360px 1fr;gap:16px">
+    <!-- Create form -->
+    <div>
+      <div class="card">
+        <div class="section-title">Create Seller</div>
+        <div class="field">
+          <label>Seller Name</label>
+          <input id="s-name" type="text" placeholder="e.g. TechZone Store" value="TechZone Store">
+        </div>
+        <div class="field">
+          <label>Account Age (days)</label>
+          <input id="s-days" type="number" value="365" min="0">
+          <div class="hint">0–29 days = new account penalty (+30 risk pts). Use 365 for an established seller.</div>
+        </div>
+        <button class="btn btn-primary" onclick="createSeller()" id="s-btn" style="width:100%">
+          Create Seller
+        </button>
+        <div id="s-result" style="margin-top:10px"></div>
+      </div>
+    </div>
+    <!-- List -->
+    <div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="section-title" style="margin:0">All Sellers</div>
+          <button class="btn btn-gray btn-sm" onclick="loadSellers()">↻ Refresh</button>
+        </div>
+        <div id="sellers-list"><div style="color:#94a3b8;font-size:13px">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     BUYERS TAB
+════════════════════════════════════════════════════════ -->
+<div id="pane-buyers" class="pane">
+  <div style="display:grid;grid-template-columns:360px 1fr;gap:16px">
+    <div>
+      <div class="card">
+        <div class="section-title">Create Buyer</div>
+        <div class="field">
+          <label>Buyer Name</label>
+          <input id="b-name" type="text" placeholder="e.g. Alice Johnson" value="Alice Johnson">
+        </div>
+        <button class="btn btn-primary" onclick="createBuyer()" style="width:100%">Create Buyer</button>
+        <div id="b-result" style="margin-top:10px"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="section-title" style="margin:0">All Buyers</div>
+          <button class="btn btn-gray btn-sm" onclick="loadBuyers()">↻ Refresh</button>
+        </div>
+        <div id="buyers-list"><div style="color:#94a3b8;font-size:13px">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     PRODUCTS TAB
+════════════════════════════════════════════════════════ -->
+<div id="pane-products" class="pane">
+  <div style="display:grid;grid-template-columns:400px 1fr;gap:16px">
+    <div>
+      <div class="card">
+        <div class="section-title">Add Product</div>
+        <div class="field">
+          <label>Title</label>
+          <input id="p-title" type="text" value="iPhone 14 Pro 256GB">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="field">
+            <label>Price ($)</label>
+            <input id="p-price" type="number" step="0.01" value="899.99">
+            <div class="hint">Actual selling price</div>
+          </div>
+          <div class="field">
+            <label>Market Price ($)</label>
+            <input id="p-market" type="number" step="0.01" value="1099.99">
+            <div class="hint">Typical retail price</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Seller</label>
+          <select id="p-seller"><option value="">Loading sellers…</option></select>
+        </div>
+        <div class="field">
+          <label>Product Image <span style="font-weight:400;color:#94a3b8">(jpg/png/webp, max 5MB)</span></label>
+          <input type="file" id="p-image" accept=".jpg,.jpeg,.png,.webp" style="padding:6px">
+          <div id="p-img-preview" style="margin-top:8px"></div>
+        </div>
+        <button class="btn btn-primary" onclick="createProduct()" style="width:100%">Add Product</button>
+        <div id="p-result" style="margin-top:10px"></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="section-title" style="margin:0">Products</div>
+          <button class="btn btn-gray btn-sm" onclick="loadProducts()">↻ Refresh</button>
+        </div>
+        <div id="products-list"><div style="color:#94a3b8;font-size:13px">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     COMPLAINTS TAB
+════════════════════════════════════════════════════════ -->
+<div id="pane-complaints" class="pane">
+  <div style="display:grid;grid-template-columns:420px 1fr;gap:16px">
+    <div>
+      <div class="card">
+        <div class="section-title">Submit Complaint</div>
+        <div class="field">
+          <label>Buyer</label>
+          <select id="c-buyer"><option value="">Loading buyers…</option></select>
+        </div>
+        <div class="field">
+          <label>Seller</label>
+          <select id="c-seller" onchange="loadProductsForComplaint()"><option value="">Loading sellers…</option></select>
+        </div>
+        <div class="field">
+          <label>Product</label>
+          <select id="c-product"><option value="">Select a seller first</option></select>
+        </div>
+        <div class="field">
+          <label>Complaint Description</label>
+          <textarea id="c-text" rows="3" placeholder="Describe the issue…">The product I received looks completely different from what was listed. It appears to be a counterfeit item.</textarea>
+          <div class="hint" id="c-sev-preview" style="font-size:11px;margin-top:5px;color:#6366f1"></div>
+        </div>
+        <div class="field">
+          <label>Evidence Photo <span style="font-weight:400;color:#94a3b8">(optional — AI will compare to listing)</span></label>
+          <input type="file" id="c-image" accept=".jpg,.jpeg,.png,.webp" style="padding:6px" onchange="previewComplaintImage(this)">
+          <div id="c-img-preview" style="margin-top:8px"></div>
+        </div>
+        <button class="btn btn-danger" onclick="submitComplaint()" style="width:100%" id="c-btn">
+          🚩 Submit Complaint
+        </button>
+        <div id="c-result" style="margin-top:10px"></div>
+      </div>
+
+      <!-- Tracking -->
+      <div class="card" id="c-track-card" style="display:none">
+        <div class="section-title">Track Complaint</div>
+        <div class="field">
+          <label>Complaint ID</label>
+          <input id="c-track-id" type="number" placeholder="Enter complaint ID">
+        </div>
+        <button class="btn btn-gray" onclick="trackComplaint()" style="width:100%">Check Status</button>
+        <div id="c-track-result" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="section-title" style="margin:0">Recent Complaints</div>
+          <button class="btn btn-gray btn-sm" onclick="loadComplaints()">↻ Refresh</button>
+        </div>
+        <div id="complaints-list"><div style="color:#94a3b8;font-size:13px">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     ADVISORY TAB
+════════════════════════════════════════════════════════ -->
+<div id="pane-advisory" class="pane">
+  <div style="display:grid;grid-template-columns:300px 1fr;gap:16px">
+    <div>
+      <div class="card">
+        <div class="section-title">Check Seller Trust</div>
+        <div class="field">
+          <label>Select Seller</label>
+          <select id="adv-seller"><option value="">Loading sellers…</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="loadAdvisory()" style="width:100%">
+          📊 Get Trust Report
+        </button>
+      </div>
+
+      <div class="card" id="adv-summary-card" style="display:none">
+        <div class="section-title">Trust Summary</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+          <div id="adv-ring" style="width:72px;height:72px;border-radius:50%;border:5px solid;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0"></div>
+          <div>
+            <div id="adv-name" style="font-weight:700;font-size:15px"></div>
+            <div id="adv-badge" class="badge" style="margin-top:4px"></div>
+          </div>
+        </div>
+        <div style="height:8px;background:#e2e8f0;border-radius:9999px;overflow:hidden;margin-bottom:6px">
+          <div id="adv-bar" style="height:100%;border-radius:9999px;transition:width .8s ease"></div>
+        </div>
+        <div id="adv-rec" style="font-size:12px;text-align:center;padding:8px;border-radius:8px;margin-top:10px;font-weight:500"></div>
+        <div id="adv-reasons" style="margin-top:12px"></div>
+        <div style="margin-top:10px;font-size:11px;color:#94a3b8;text-align:center" id="adv-ai-model"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" id="adv-signals-card" style="display:none">
+        <div class="section-title">Feature Vector — How the score was calculated</div>
+        <div id="adv-signals-grid"></div>
+        <div class="divider"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px">
+          <span style="font-weight:600;color:#475569">Weighted Risk</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:180px;height:8px;background:#e2e8f0;border-radius:9999px;overflow:hidden">
+              <div id="adv-wrisk-bar" style="height:100%;border-radius:9999px;transition:width .8s ease"></div>
+            </div>
+            <span id="adv-wrisk-pct" style="font-weight:700;min-width:40px;text-align:right"></span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:6px">
+          trust_score = (1 − weighted_risk) × 100
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     ADMIN TAB
+════════════════════════════════════════════════════════ -->
+<div id="pane-admin" class="pane">
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:16px">
+    <div>
+      <!-- Complaint queue -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="section-title" style="margin:0">Complaint Review Queue</div>
+          <div style="display:flex;gap:6px">
+            <select id="adm-filter" onchange="loadAdminComplaints()" style="border:1px solid #e2e8f0;border-radius:7px;padding:4px 8px;font-size:12px">
+              <option value="pending">Pending review</option>
+              <option value="">All complaints</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="spam">Spam</option>
+            </select>
+            <button class="btn btn-gray btn-sm" onclick="loadAdminComplaints()">↻</button>
+          </div>
+        </div>
+        <div id="admin-complaints-list"><div style="color:#94a3b8;font-size:13px">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- Sidebar: suspicious sellers + recalculate -->
+    <div>
+      <div class="card">
+        <div class="section-title">Risky Sellers</div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <input id="adm-threshold" type="number" value="69" min="0" max="100" style="border:1px solid #e2e8f0;border-radius:7px;padding:5px 8px;font-size:12px;width:70px">
+          <button class="btn btn-gray btn-sm" onclick="loadSuspicious()" style="flex:1">Show ≤ threshold</button>
+        </div>
+        <div id="suspicious-list"><div style="color:#94a3b8;font-size:13px">Click "Show" to load</div></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Force Recalculate</div>
+        <div style="display:flex;gap:6px">
+          <select id="adm-recalc-seller" style="flex:1;border:1px solid #e2e8f0;border-radius:7px;padding:5px 8px;font-size:12px">
+            <option value="">Select seller…</option>
+          </select>
+          <button class="btn btn-warn btn-sm" onclick="doRecalculate()">↻ Recalc</button>
+        </div>
+        <div id="recalc-result" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main container -->
+
+<script>
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmtDate(d){return d?new Date(d).toLocaleString():'—'}
+function scoreColor(s){return s>=70?'#10b981':s>=40?'#f59e0b':'#ef4444'}
+function riskLabel(s){return s>=70?'Safe':s>=40?'Caution':'High Risk'}
+function badgeCls(s){return s>=70?'badge-safe':s>=40?'badge-caution':'badge-risk'}
+
+async function api(method,path,data){
+  const opts={method,headers:{}};
+  if(data instanceof FormData){opts.body=data}
+  else if(data){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(data)}
+  const r=await fetch(path,opts);
+  const json=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(json.detail||JSON.stringify(json)||`HTTP ${r.status}`);
+  return json;
+}
+
+function alert_html(msg,type='success'){
+  return `<div class="alert alert-${type}">${esc(msg)}</div>`;
+}
+
+function setLoading(btnId,on){
+  const btn=document.getElementById(btnId);
+  if(!btn)return;
+  if(on){btn._orig=btn.innerHTML;btn.disabled=true;btn.innerHTML=`<span class="spinner"></span> Loading…`}
+  else{btn.disabled=false;btn.innerHTML=btn._orig||btn.innerHTML}
+}
+
+// ── Health check ──────────────────────────────────────────────────────────────
+async function checkHealth(){
+  try{
+    const h=await api('GET','/health');
+    document.getElementById('health-dot').style.background='#10b981';
+    document.getElementById('health-label').textContent='API online';
+    document.getElementById('ai-model-name').textContent=h.ai_model==='none'?'No AI model':h.ai_model.toUpperCase();
+    document.getElementById('ai-model-desc').textContent=h.ai_model==='clip'?'Semantic image understanding (best)':h.ai_model==='resnet'?'Visual feature extraction (fallback)':'Install openai-clip for AI features';
+    document.getElementById('ai-icon').textContent=h.ai_model==='clip'?'🧠':h.ai_model==='resnet'?'🔍':'⚠️';
+    document.getElementById('db-backend').textContent=h.db_backend||'sqlite';
+  }catch{
+    document.getElementById('health-dot').style.background='#ef4444';
+    document.getElementById('health-label').textContent='API offline';
+  }
+}
+
+async function loadOverview(){
+  try{
+    const [sellers,buyers,products,complaints]=await Promise.all([
+      api('GET','/sellers/all?limit=1000'),
+      api('GET','/buyers/all?limit=1000'),
+      api('GET','/products/all?limit=1000'),
+      api('GET','/complaints/all?limit=1000'),
+    ]);
+    document.getElementById('ov-sellers').textContent=sellers.length;
+    document.getElementById('ov-buyers').textContent=buyers.length;
+    document.getElementById('ov-products').textContent=products.length;
+    document.getElementById('ov-complaints').textContent=complaints.length;
+  }catch{}
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+const TABS=['workflow','sellers','buyers','products','complaints','advisory','admin'];
+function switchTab(name){
+  TABS.forEach(t=>{
+    document.getElementById('pane-'+t).classList.toggle('on',t===name);
+  });
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('on',TABS[i]===name));
+  if(name==='sellers') loadSellers();
+  if(name==='buyers') loadBuyers();
+  if(name==='products'){loadSellerDropdowns();loadProducts();}
+  if(name==='complaints'){loadComplaintDropdowns();loadComplaints();}
+  if(name==='advisory'){loadAdvSellerDropdown();}
+  if(name==='admin'){loadAdminComplaints();loadAdmSellerDropdown();}
+}
+
+// ── Seller dropdown helper ────────────────────────────────────────────────────
+let _sellers=[];
+async function refreshSellers(){
+  _sellers=await api('GET','/sellers/all?limit=500').catch(()=>[]);
+  return _sellers;
+}
+function populateSellers(selectId,placeholder='Select seller…'){
+  const sel=document.getElementById(selectId);
+  if(!sel)return;
+  sel.innerHTML=`<option value="">${placeholder}</option>`+
+    _sellers.map(s=>`<option value="${s.id}">${esc(s.name)} (ID:${s.id} · Trust:${s.trust_score})</option>`).join('');
+}
+
+// ════════════════════ SELLERS ════════════════════
+
+async function createSeller(){
+  const name=document.getElementById('s-name').value.trim();
+  const days=parseInt(document.getElementById('s-days').value)||0;
+  if(!name){document.getElementById('s-result').innerHTML=alert_html('Name is required','error');return;}
+  setLoading('s-btn',true);
+  try{
+    const s=await api('POST','/sellers/add',{name,account_age_days:days});
+    document.getElementById('s-result').innerHTML=alert_html(`✓ Seller created — ID: ${s.id}. Trust score starts at ${s.trust_score}/100.`);
+    loadSellers();
+    await refreshSellers();
+  }catch(e){
+    document.getElementById('s-result').innerHTML=alert_html(e.message,'error');
+  }finally{setLoading('s-btn',false);}
+}
+
+async function loadSellers(){
+  const el=document.getElementById('sellers-list');
+  el.innerHTML='<div style="color:#94a3b8;font-size:13px">Loading…</div>';
+  try{
+    const sellers=await api('GET','/sellers/all?limit=200');
+    _sellers=sellers;
+    if(!sellers.length){el.innerHTML='<div style="color:#94a3b8;font-size:13px">No sellers yet. Create one!</div>';return;}
+    el.innerHTML=sellers.map(s=>{
+      const col=scoreColor(s.trust_score);
+      const risk=riskLabel(s.trust_score);
+      return `<div class="result-row">
+        <div style="min-width:0;flex:1">
+          <span style="font-weight:600">${esc(s.name)}</span>
+          <span class="id-tag" style="margin-left:6px">#${s.id}</span>
+          <span style="font-size:11px;color:#94a3b8;margin-left:6px">${s.account_age_days} days old</span>
+        </div>
+        <div class="trust-bar-wrap"><div class="trust-bar-fill" style="width:${s.trust_score}%;background:${col}"></div></div>
+        <div style="font-weight:800;color:${col};min-width:30px;text-align:right">${s.trust_score}</div>
+        <div style="margin-left:8px"><span class="badge ${badgeCls(s.trust_score)}">${risk}</span></div>
+        <div style="margin-left:8px;display:flex;gap:4px">
+          <button class="btn btn-gray btn-sm" onclick="quickAdvisory(${s.id})">Advisory</button>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div style="color:#ef4444;font-size:13px">${esc(e.message)}</div>`;}
+}
+
+async function quickAdvisory(sid){
+  switchTab('advisory');
+  document.getElementById('adv-seller').value=sid;
+  loadAdvisory();
+}
+
+// ════════════════════ BUYERS ════════════════════
+
+async function createBuyer(){
+  const name=document.getElementById('b-name').value.trim();
+  if(!name){document.getElementById('b-result').innerHTML=alert_html('Name is required','error');return;}
+  try{
+    const b=await api('POST','/buyers/add',{name});
+    document.getElementById('b-result').innerHTML=alert_html(`✓ Buyer created — ID: ${b.id}. Credibility starts at ${b.credibility_score}/100.`);
+    loadBuyers();
+  }catch(e){document.getElementById('b-result').innerHTML=alert_html(e.message,'error');}
+}
+
+async function loadBuyers(){
+  const el=document.getElementById('buyers-list');
+  el.innerHTML='<div style="color:#94a3b8;font-size:13px">Loading…</div>';
+  try{
+    const buyers=await api('GET','/buyers/all?limit=200');
+    if(!buyers.length){el.innerHTML='<div style="color:#94a3b8;font-size:13px">No buyers yet.</div>';return;}
+    el.innerHTML=buyers.map(b=>`
+      <div class="result-row">
+        <div style="flex:1"><span style="font-weight:600">${esc(b.name)}</span><span class="id-tag" style="margin-left:6px">#${b.id}</span></div>
+        <div style="font-size:12px;color:#64748b">Credibility</div>
+        <div class="trust-bar-wrap" style="max-width:100px">
+          <div class="trust-bar-fill" style="width:${b.credibility_score}%;background:${scoreColor(b.credibility_score)}"></div>
+        </div>
+        <div style="font-weight:700;color:${scoreColor(b.credibility_score)};min-width:30px;text-align:right">${b.credibility_score}</div>
+        ${b.spam_flag_count>0?`<span class="badge badge-risk" style="margin-left:8px">⚠ ${b.spam_flag_count} spam</span>`:''}
+      </div>`).join('');
+  }catch(e){el.innerHTML=`<div style="color:#ef4444;font-size:13px">${esc(e.message)}</div>`;}
+}
+
+// ════════════════════ PRODUCTS ════════════════════
+
+async function loadSellerDropdowns(){
+  if(!_sellers.length) await refreshSellers();
+  populateSellers('p-seller','Select seller…');
+}
+
+document.getElementById('p-image').addEventListener('change',function(){
+  const file=this.files[0];
+  if(!file)return;
+  const url=URL.createObjectURL(file);
+  document.getElementById('p-img-preview').innerHTML=`<img src="${url}" style="max-height:100px;border-radius:8px;border:1px solid #e2e8f0;object-fit:cover">`;
+});
+
+async function createProduct(){
+  const title=document.getElementById('p-title').value.trim();
+  const price=parseFloat(document.getElementById('p-price').value);
+  const market=parseFloat(document.getElementById('p-market').value);
+  const seller_id=document.getElementById('p-seller').value;
+  const imgFile=document.getElementById('p-image').files[0];
+  if(!title||!price||!market||!seller_id){
+    document.getElementById('p-result').innerHTML=alert_html('Fill all required fields','error');return;
+  }
+  const fd=new FormData();
+  fd.append('title',title);fd.append('price',price);fd.append('market_price',market);
+  fd.append('seller_id',seller_id);
+  if(imgFile) fd.append('image',imgFile);
+  try{
+    const p=await api('POST','/products/add',fd);
+    const anomaly=p.price<0.6*p.market_price;
+    document.getElementById('p-result').innerHTML=alert_html(
+      `✓ Product added — ID: ${p.id}.${anomaly?' ⚠ Price is below 60% of market price — price anomaly detected.':''}`
+    );
+    loadProducts();
+  }catch(e){document.getElementById('p-result').innerHTML=alert_html(e.message,'error');}
+}
+
+async function loadProducts(){
+  const el=document.getElementById('products-list');
+  el.innerHTML='<div style="color:#94a3b8;font-size:13px">Loading…</div>';
+  try{
+    const products=await api('GET','/products/all?limit=200');
+    if(!products.length){el.innerHTML='<div style="color:#94a3b8;font-size:13px">No products yet.</div>';return;}
+    el.innerHTML=products.map(p=>{
+      const anomaly=p.price<0.6*p.market_price;
+      return `<div class="result-row">
+        <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:18px">
+          ${p.image_path?`<img src="/${p.image_path}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='📦'">`:'📦'}
+        </div>
+        <div style="flex:1;min-width:0;margin-left:10px">
+          <span style="font-weight:600">${esc(p.title)}</span>
+          <span class="id-tag" style="margin-left:6px">#${p.id}</span>
+          <div style="font-size:11px;color:#64748b;margin-top:2px">
+            $${p.price.toFixed(2)} <span style="color:#94a3b8;text-decoration:line-through">$${p.market_price.toFixed(2)}</span>
+            ${anomaly?'<span style="color:#f59e0b;font-weight:600;margin-left:4px">⚠ Price anomaly</span>':''}
+          </div>
+        </div>
+        <div style="font-size:11px;color:#94a3b8">Seller #${p.seller_id}</div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div style="color:#ef4444;font-size:13px">${esc(e.message)}</div>`;}
+}
+
+// ════════════════════ COMPLAINTS ════════════════════
+
+// Keyword scoring for preview
+const KW={fraud:3,fake:3,scam:3,counterfeit:3,wrong:2,broken:2,damaged:2,missing:2,'not working':2,defective:2,different:1,poor:1,bad:1};
+document.getElementById('c-text').addEventListener('input',function(){
+  let raw=0; const txt=this.value.toLowerCase();
+  for(const[k,w] of Object.entries(KW)) if(txt.includes(k)) raw+=w;
+  const sev=Math.max(1,Math.min(5,Math.round(raw/5*2)));
+  const labels=['','Minor','Low','Moderate','High','Critical'];
+  const cols=['','#10b981','#84cc16','#f59e0b','#ef4444','#dc2626'];
+  const dots='●'.repeat(sev)+'○'.repeat(5-sev);
+  document.getElementById('c-sev-preview').innerHTML=raw>0
+    ?`<span style="color:${cols[sev]}">Predicted severity: ${dots} ${labels[sev]} (${sev}/5 — AI will refine)</span>`
+    :'Text analysis: no severity keywords found yet';
+});
+
+async function loadComplaintDropdowns(){
+  if(!_sellers.length) await refreshSellers();
+  const buyers=await api('GET','/buyers/all?limit=500').catch(()=>[]);
+  const bSel=document.getElementById('c-buyer');
+  bSel.innerHTML='<option value="">Select buyer…</option>'+buyers.map(b=>`<option value="${b.id}">${esc(b.name)} (ID:${b.id})</option>`).join('');
+  populateSellers('c-seller','Select seller…');
+}
+
+async function loadProductsForComplaint(){
+  const sid=document.getElementById('c-seller').value;
+  const sel=document.getElementById('c-product');
+  if(!sid){sel.innerHTML='<option value="">Select a seller first</option>';return;}
+  const products=await api('GET',`/products/seller/${sid}`).catch(()=>[]);
+  sel.innerHTML=products.length
+    ?'<option value="">Select product…</option>'+products.map(p=>`<option value="${p.id}">${esc(p.title)} — $${p.price}</option>`).join('')
+    :'<option value="">No products for this seller</option>';
+}
+
+function previewComplaintImage(input){
+  const file=input.files[0];
+  if(!file)return;
+  const url=URL.createObjectURL(file);
+  document.getElementById('c-img-preview').innerHTML=`<img src="${url}" style="max-height:90px;border-radius:8px;border:1px solid #e2e8f0;object-fit:cover">`;
+}
+
+async function submitComplaint(){
+  const buyer=document.getElementById('c-buyer').value;
+  const seller=document.getElementById('c-seller').value;
+  const product=document.getElementById('c-product').value;
+  const text=document.getElementById('c-text').value.trim();
+  const imgFile=document.getElementById('c-image').files[0];
+  if(!buyer||!seller||!product||text.length<5){
+    document.getElementById('c-result').innerHTML=alert_html('Fill all required fields (text min 5 chars)','error');return;
+  }
+  setLoading('c-btn',true);
+  const fd=new FormData();
+  fd.append('buyer_id',buyer);fd.append('seller_id',seller);
+  fd.append('product_id',product);fd.append('complaint_text',text);
+  if(imgFile) fd.append('received_image',imgFile);
+  try{
+    const resp=await api('POST','/complaints/add',fd);
+    const cid=resp.complaint_id||resp.complaint?.id;
+    document.getElementById('c-result').innerHTML=`
+      <div class="alert alert-success">✓ Complaint #${cid} submitted and queued for AI processing.</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('c-track-id').value=${cid};document.getElementById('c-track-card').style.display='';trackComplaint()">
+          Track #${cid}
+        </button>
+      </div>`;
+    document.getElementById('c-track-card').style.display='';
+    loadComplaints();
+    pollComplaint(cid);
+  }catch(e){document.getElementById('c-result').innerHTML=alert_html(e.message,'error');}
+  finally{setLoading('c-btn',false);}
+}
+
+async function pollComplaint(id){
+  let attempts=0;
+  const interval=setInterval(async()=>{
+    attempts++;
+    if(attempts>30){clearInterval(interval);return;}
+    try{
+      const c=await api('GET',`/complaints/${id}`);
+      if(c.processing_status==='done'){
+        clearInterval(interval);
+        document.getElementById('c-track-id').value=id;
+        renderTrackResult(c);
+        loadComplaints();
+      }
+    }catch{}
+  },2500);
+}
+
+async function trackComplaint(){
+  const id=document.getElementById('c-track-id').value;
+  if(!id){return;}
+  try{
+    const c=await api('GET',`/complaints/${id}`);
+    renderTrackResult(c);
+    if(c.processing_status!=='done'){
+      setTimeout(()=>trackComplaint(),3000);
+    }
+  }catch(e){document.getElementById('c-track-result').innerHTML=alert_html(e.message,'error');}
+}
+
+function renderTrackResult(c){
+  const isDone=c.processing_status==='done';
+  const misCol=c.visual_mismatch_score>0.6?'#ef4444':c.visual_mismatch_score>0.3?'#f59e0b':'#10b981';
+  const sevCol=c.severity_level>=4?'#ef4444':c.severity_level>=3?'#f59e0b':c.severity_level>=2?'#84cc16':'#10b981';
+  const labels={1:'Minor',2:'Low',3:'Moderate',4:'High',5:'Critical'};
+  document.getElementById('c-track-result').innerHTML=`
+    <div class="card" style="padding:12px 14px;margin:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-weight:700">Complaint #${c.id}</span>
+        <span class="badge ${isDone?'badge-done':'badge-queued'}">
+          ${isDone?'✓ done':'⏳ '+c.processing_status}
+          ${!isDone?'<span class="spinner" style="margin-left:4px"></span>':''}
+        </span>
+      </div>
+      ${isDone?`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:3px">Severity</div>
+            <div style="font-size:24px;font-weight:800;color:${sevCol}">${c.severity_level}</div>
+            <div style="font-size:11px;color:${sevCol}">${labels[c.severity_level]||'—'}</div>
+          </div>
+          <div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:3px">Visual Mismatch</div>
+            <div style="font-size:24px;font-weight:800;color:${misCol}">${(c.visual_mismatch_score*100).toFixed(0)}%</div>
+            <div style="font-size:11px;color:${misCol}">${c.visual_mismatch_score>0.6?'High mismatch':c.visual_mismatch_score>0.3?'Some difference':'Images similar'}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="badge badge-gray">admin: ${c.admin_status}</span>
+          <span class="badge badge-gray">status: ${c.status}</span>
+        </div>`
+      :`<div style="color:#64748b;font-size:12px">AI is analysing the complaint… refresh in a moment.</div>`}
+    </div>`;
+}
+
+async function loadComplaints(){
+  const el=document.getElementById('complaints-list');
+  el.innerHTML='<div style="color:#94a3b8;font-size:13px">Loading…</div>';
+  try{
+    const complaints=await api('GET','/complaints/all?limit=30');
+    if(!complaints.length){el.innerHTML='<div style="color:#94a3b8;font-size:13px">No complaints yet.</div>';return;}
+    const labels={1:'Minor',2:'Low',3:'Moderate',4:'High',5:'Critical'};
+    const sevCol=(v)=>v>=4?'#ef4444':v>=3?'#f59e0b':v>=2?'#84cc16':'#10b981';
+    const misCol=(v)=>v>0.6?'#ef4444':v>0.3?'#f59e0b':'#10b981';
+    el.innerHTML=complaints.slice().reverse().map(c=>`
+      <div class="result-row" style="flex-wrap:wrap;gap:6px">
+        <span class="id-tag">#${c.id}</span>
+        <div style="flex:1;min-width:200px;font-size:12px;color:#334155">${esc(c.complaint_text.slice(0,70))}${c.complaint_text.length>70?'…':''}</div>
+        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+          ${c.processing_status==='done'?`
+            <span style="font-size:12px;font-weight:700;color:${sevCol(c.severity_level)}">Sev ${c.severity_level}/5</span>
+            <span style="font-size:12px;font-weight:600;color:${misCol(c.visual_mismatch_score)}">${(c.visual_mismatch_score*100).toFixed(0)}% mismatch</span>
+          `:`<span class="badge badge-queued">⏳ processing</span>`}
+          <span class="badge badge-gray">${c.admin_status}</span>
+          <button class="btn btn-gray btn-sm" onclick="document.getElementById('c-track-id').value=${c.id};document.getElementById('c-track-card').style.display='';trackComplaint()">Track</button>
+        </div>
+      </div>`).join('');
+  }catch(e){el.innerHTML=`<div style="color:#ef4444;font-size:13px">${esc(e.message)}</div>`;}
+}
+
+// ════════════════════ ADVISORY ════════════════════
+
+async function loadAdvSellerDropdown(){
+  if(!_sellers.length) await refreshSellers();
+  populateSellers('adv-seller','Select a seller to analyse…');
+}
+
+async function loadAdvisory(){
+  const sid=document.getElementById('adv-seller').value;
+  if(!sid)return;
+  try{
+    const adv=await api('GET',`/advisory/seller/${sid}`);
+    const score=adv.trust_score;
+    const col=scoreColor(score);
+
+    document.getElementById('adv-summary-card').style.display='';
+    document.getElementById('adv-signals-card').style.display='';
+
+    const ring=document.getElementById('adv-ring');
+    ring.textContent=score;
+    ring.style.borderColor=col;ring.style.color=col;
+    ring.style.background=score>=70?'#f0fdf4':score>=40?'#fefce8':'#fef2f2';
+
+    document.getElementById('adv-name').textContent=adv.seller_name;
+    const badge=document.getElementById('adv-badge');
+    badge.textContent=adv.risk_level;
+    badge.className='badge '+(score>=70?'badge-safe':score>=40?'badge-caution':'badge-risk');
+
+    const bar=document.getElementById('adv-bar');
+    bar.style.background=col;
+    setTimeout(()=>bar.style.width=`${score}%`,100);
+
+    const rec=document.getElementById('adv-rec');
+    rec.textContent=adv.recommendation;
+    rec.style.background=score>=70?'#f0fdf4':score>=40?'#fefce8':'#fef2f2';
+    rec.style.color=score>=70?'#166534':score>=40?'#854d0e':'#991b1b';
+
+    const reasons=adv.reasons||[];
+    document.getElementById('adv-reasons').innerHTML=reasons.length
+      ?reasons.map((r,i)=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px;color:#334155">
+          <span style="color:#f59e0b;flex-shrink:0">⚠</span>${esc(r)}</div>`).join('')
+      :`<div style="font-size:12px;color:#10b981;padding:6px 0">✓ No risk factors detected</div>`;
+
+    document.getElementById('adv-ai-model').textContent=`AI model: ${adv.ai_model_used}`;
+
+    // Signals grid
+    const s=adv.signals;
+    const WEIGHTS={open_complaint_ratio:0.25,avg_severity:0.20,mean_visual_mismatch:0.20,buyer_credibility_weighted_sev:0.15,price_anomaly_ratio:0.10,complaint_frequency:0.05,account_age_penalty:0.05};
+    const LABELS={open_complaint_ratio:'Open complaints ratio',avg_severity:'Avg severity',mean_visual_mismatch:'Mean visual mismatch',buyer_credibility_weighted_sev:'Cred-weighted severity',price_anomaly_ratio:'Price anomaly ratio',complaint_frequency:'Complaint frequency',account_age_penalty:'Account age penalty'};
+    const features={open_complaint_ratio:Math.min(1,s.open_complaints/Math.max(1,s.total_complaints)),avg_severity:s.avg_severity/5,mean_visual_mismatch:s.mean_visual_mismatch,buyer_credibility_weighted_sev:s.buyer_credibility_weighted_sev/5,price_anomaly_ratio:s.price_anomaly_ratio,complaint_frequency:Math.min(1,s.complaint_frequency/10),account_age_penalty:s.account_age_penalty};
+
+    document.getElementById('adv-signals-grid').innerHTML=Object.entries(LABELS).map(([key,label])=>{
+      const val=features[key]||0;
+      const w=WEIGHTS[key]||0;
+      const contribution=(val*w*100).toFixed(1);
+      const pct=Math.round(val*100);
+      const bc=pct>75?'#ef4444':pct>50?'#f59e0b':pct>25?'#84cc16':'#10b981';
+      return `<div class="feature-row">
+        <div>
+          <div style="font-weight:500;font-size:12px">${label}</div>
+          <div style="font-size:10px;color:#94a3b8">weight: ${(w*100).toFixed(0)}%</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="feature-bar"><div class="feature-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
+          <span style="font-size:11px;color:${bc};font-weight:600;min-width:30px;text-align:right">${pct}%</span>
+        </div>
+        <div style="text-align:right;min-width:60px">
+          <span style="font-size:11px;font-weight:600;color:${parseFloat(contribution)>5?'#ef4444':parseFloat(contribution)>2?'#f59e0b':'#475569'}">+${contribution} pts</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    const wr=s.weighted_risk;
+    const wrBar=document.getElementById('adv-wrisk-bar');
+    wrBar.style.background=wr>0.6?'#ef4444':wr>0.3?'#f59e0b':'#10b981';
+    setTimeout(()=>wrBar.style.width=`${wr*100}%`,100);
+    document.getElementById('adv-wrisk-pct').textContent=`${(wr*100).toFixed(1)}%`;
+    document.getElementById('adv-wrisk-pct').style.color=wr>0.6?'#ef4444':wr>0.3?'#f59e0b':'#10b981';
+
+  }catch(e){alert(e.message);}
+}
+
+// ════════════════════ ADMIN ════════════════════
+
+async function loadAdminComplaints(){
+  const filter=document.getElementById('adm-filter').value;
+  const el=document.getElementById('admin-complaints-list');
+  el.innerHTML='<div style="color:#94a3b8;font-size:13px">Loading…</div>';
+  try{
+    const url=filter?`/admin/complaints?admin_status=${filter}&limit=100`:'/admin/complaints?limit=100';
+    const complaints=await api('GET',url);
+    if(!complaints.length){el.innerHTML='<div style="color:#94a3b8;font-size:13px">No complaints matching filter.</div>';return;}
+    const sevCol=(v)=>v>=4?'#ef4444':v>=3?'#f59e0b':v>=2?'#84cc16':'#10b981';
+    const misCol=(v)=>v>0.6?'#ef4444':v>0.3?'#f59e0b':'#10b981';
+    el.innerHTML=complaints.map(c=>{
+      const isPending=c.admin_status==='pending';
+      const isDone=c.processing_status==='done';
+      return `
+      <div class="card" style="padding:12px 14px;margin-bottom:10px" id="adm-c-${c.id}">
+        <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <span class="id-tag">#${c.id}</span>
+              <span class="badge badge-gray">${c.status}</span>
+              <span class="badge ${c.admin_status==='pending'?'badge-blue':c.admin_status==='approved'?'badge-safe':'badge-risk'}">${c.admin_status}</span>
+              ${!isDone?`<span class="badge badge-queued">⏳ processing</span>`:''}
+            </div>
+            <p style="font-size:12px;color:#334155;margin:0 0 6px">${esc(c.complaint_text.slice(0,100))}${c.complaint_text.length>100?'…':''}</p>
+            <div style="display:flex;gap:12px;font-size:11px;color:#64748b">
+              <span>Buyer #${c.buyer_id}</span>
+              <span>Seller #${c.seller_id}</span>
+              <span>Product #${c.product_id}</span>
+            </div>
+            ${isDone?`
+            <div style="display:flex;gap:12px;margin-top:6px;font-size:12px">
+              <span style="font-weight:700;color:${sevCol(c.severity_level)}">Sev ${c.severity_level}/5</span>
+              <span style="font-weight:600;color:${misCol(c.visual_mismatch_score)}">Mismatch ${(c.visual_mismatch_score*100).toFixed(0)}%</span>
+            </div>`:
+            `<div style="font-size:11px;color:#94a3b8;margin-top:4px">AI processing…</div>`}
+          </div>
+          ${isPending?`
+          <div style="display:flex;gap:6px;flex-shrink:0;flex-direction:column;align-items:stretch">
+            <button class="btn btn-success btn-sm" onclick="adminAction(${c.id},'approve')">✅ Approve<br><span style="font-weight:400;font-size:10px">Buyer +5 cred</span></button>
+            <button class="btn btn-danger btn-sm" onclick="adminAction(${c.id},'reject')">❌ Reject<br><span style="font-weight:400;font-size:10px">Buyer −3 cred</span></button>
+            <button class="btn btn-warn btn-sm" onclick="adminAction(${c.id},'spam')">🚫 Spam<br><span style="font-weight:400;font-size:10px">Buyer −8 cred</span></button>
+          </div>`
+          :`<div style="color:#94a3b8;font-size:11px;align-self:center">Already reviewed</div>`}
+        </div>
+        <div id="adm-msg-${c.id}" style="display:none;margin-top:8px"></div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div style="color:#ef4444;font-size:13px">${esc(e.message)}</div>`;}
+}
+
+async function adminAction(id,action){
+  const url={approve:`/admin/complaints/${id}/approve`,reject:`/admin/complaints/${id}/reject`,spam:`/admin/complaints/${id}/spam`}[action];
+  const actionLabels={approve:'approved',reject:'rejected',spam:'marked spam'};
+  const credChange={approve:'+5',reject:'−3',spam:'−8'};
+  try{
+    const resp=await api('PUT',url);
+    const msg=document.getElementById(`adm-msg-${id}`);
+    msg.style.display='';
+    msg.innerHTML=`<div class="alert alert-success">
+      ✓ Complaint ${actionLabels[action]}. 
+      Buyer credibility: ${resp.buyer_credibility_after} (${credChange[action]}). 
+      Seller trust: ${resp.seller_trust_after}/100.
+    </div>`;
+    // disable buttons
+    const card=document.getElementById(`adm-c-${id}`);
+    card.querySelectorAll('button').forEach(b=>b.disabled=true);
+    setTimeout(()=>loadAdminComplaints(),1000);
+  }catch(e){
+    const msg=document.getElementById(`adm-msg-${id}`);
+    msg.style.display='';
+    msg.innerHTML=alert_html(e.message,'error');
+  }
+}
+
+async function loadSuspicious(){
+  const t=document.getElementById('adm-threshold').value||69;
+  const el=document.getElementById('suspicious-list');
+  el.innerHTML='<div style="color:#94a3b8;font-size:12px">Loading…</div>';
+  try{
+    const sellers=await api('GET',`/admin/sellers/suspicious?threshold=${t}`);
+    if(!sellers.length){el.innerHTML='<div style="color:#10b981;font-size:12px">No sellers at or below this threshold ✓</div>';return;}
+    el.innerHTML=sellers.map(s=>{
+      const col=scoreColor(s.trust_score);
+      return `<div class="result-row" style="padding:8px 10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:12px">${esc(s.name)}</div>
+          <div style="font-size:10px;color:#94a3b8">${s.open_complaint_count||0} open complaints</div>
+        </div>
+        <div style="font-weight:800;color:${col};font-size:14px">${s.trust_score}</div>
+        <button class="btn btn-gray btn-sm" style="margin-left:6px;font-size:10px" onclick="quickAdvisory(${s.id})">View</button>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML=`<div style="color:#ef4444;font-size:12px">${esc(e.message)}</div>`;}
+}
+
+async function loadAdmSellerDropdown(){
+  if(!_sellers.length) await refreshSellers();
+  const sel=document.getElementById('adm-recalc-seller');
+  sel.innerHTML='<option value="">Select seller…</option>'+_sellers.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+}
+
+async function doRecalculate(){
+  const sid=document.getElementById('adm-recalc-seller').value;
+  if(!sid)return;
+  try{
+    const resp=await api('POST',`/admin/sellers/${sid}/recalculate`);
+    const col=scoreColor(resp.trust_score);
+    document.getElementById('recalc-result').innerHTML=`<div class="alert alert-success" style="font-size:12px">✓ Recalculated → <strong style="color:${col}">${resp.trust_score}/100</strong></div>`;
+    if(_sellers.length) await refreshSellers();
+  }catch(e){document.getElementById('recalc-result').innerHTML=alert_html(e.message,'error');}
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+checkHealth();
+loadOverview();
+refreshSellers();
+</script>
+</body>
+</html>

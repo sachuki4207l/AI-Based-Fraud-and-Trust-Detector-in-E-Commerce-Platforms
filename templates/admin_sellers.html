@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Seller Monitoring — Admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <div class="text-xs text-gray-400 mb-0.5">Admin</div>
+    <h1 class="text-2xl font-bold text-gray-900">👥 Seller Monitoring</h1>
+  </div>
+  <div class="flex gap-2">
+    <a href="/admin-complaints" class="border border-gray-200 hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-xl text-xs font-semibold">🚩 Complaints</a>
+    <button onclick="loadSellers()" class="border border-gray-200 hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-xl text-xs font-semibold">↻ Refresh</button>
+  </div>
+</div>
+
+<!-- Filter by threshold -->
+<div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5 flex flex-wrap items-center gap-3">
+  <span class="text-sm font-semibold text-gray-600">Show sellers below trust score:</span>
+  <div class="flex gap-2">
+    <button onclick="setThreshold(40,this)"  class="thresh-btn active">≤40 High Risk</button>
+    <button onclick="setThreshold(70,this)"  class="thresh-btn">≤70 At Risk</button>
+    <button onclick="setThreshold(100,this)" class="thresh-btn">All sellers</button>
+  </div>
+  <div class="ml-auto flex gap-2 items-center">
+    <input id="custom-threshold" type="number" value="40" min="0" max="100" class="border border-gray-200 rounded-lg px-2 py-1 text-xs w-16 focus:outline-none">
+    <button onclick="setCustomThreshold()" class="text-xs text-indigo-600 hover:underline font-semibold">Apply</button>
+  </div>
+</div>
+
+<div id="loading" class="flex justify-center py-12">
+  <div class="spinner" style="width:30px;height:30px;border-width:3px"></div>
+</div>
+<div id="sellers-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+<div id="empty" class="hidden text-center py-12">
+  <div class="text-3xl mb-2">✅</div>
+  <p class="text-gray-400 text-sm">No sellers at or below this threshold</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.thresh-btn{padding:5px 12px;border-radius:9999px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid #e2e8f0;color:#64748b;background:#fff;transition:all .15s}
+.thresh-btn.active{border-color:#6366f1;background:#eff6ff;color:#4338ca}
+</style>
+<script>
+let currentThreshold = 40;
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const scoreCol = s => s>=70?'#16a34a':s>=40?'#d97706':'#dc2626';
+const riskLabel= s => s>=70?'Safe':s>=40?'Caution':'High Risk';
+
+function setThreshold(t, btn) {
+  currentThreshold = t;
+  document.querySelectorAll('.thresh-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('custom-threshold').value = t;
+  loadSellers();
+}
+function setCustomThreshold() {
+  currentThreshold = parseInt(document.getElementById('custom-threshold').value)||40;
+  document.querySelectorAll('.thresh-btn').forEach(b=>b.classList.remove('active'));
+  loadSellers();
+}
+
+async function loadSellers() {
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('sellers-grid').innerHTML = '';
+  try {
+    const sellers = await fetch(`/admin/sellers/suspicious?threshold=${currentThreshold}`).then(r=>r.json());
+    document.getElementById('loading').classList.add('hidden');
+    if (!sellers.length) { document.getElementById('empty').classList.remove('hidden'); return; }
+    document.getElementById('empty').classList.add('hidden');
+    document.getElementById('sellers-grid').innerHTML = sellers.map(s => {
+      const col = scoreCol(s.trust_score);
+      const risk = riskLabel(s.trust_score);
+      const badgeCls = s.trust_score>=70?'bg-green-100 text-green-700':s.trust_score>=40?'bg-yellow-100 text-yellow-700':'bg-red-100 text-red-700';
+      return `
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">${(s.name||'?')[0].toUpperCase()}</div>
+            <div>
+              <div class="font-bold text-gray-800 text-sm">${esc(s.name)}</div>
+              <div class="text-xs text-gray-400">${s.account_age_days} days · ${s.open_complaint_count||0} open complaints</div>
+            </div>
+          </div>
+          <div style="color:${col};font-size:28px;font-weight:800;line-height:1">${s.trust_score}</div>
+        </div>
+        <div class="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+          <div style="width:${s.trust_score}%;height:100%;border-radius:9999px;background:${col};transition:width .6s"></div>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${badgeCls}">${risk}</span>
+          <div class="flex gap-2">
+            <a href="/seller/${s.id}" class="text-xs text-indigo-500 hover:underline font-semibold">Dashboard</a>
+            <a href="/admin/signals/${s.id}" class="text-xs text-purple-500 hover:underline font-semibold">Signals</a>
+            <button onclick="recalc(${s.id}, this)" class="text-xs text-gray-400 hover:underline font-semibold">↻ Recalc</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { document.getElementById('loading').innerHTML = `<p class="text-red-500 text-sm">${esc(e.message)}</p>`; }
+}
+
+async function recalc(id, btn) {
+  btn.textContent = '…'; btn.disabled = true;
+  try {
+    const r = await fetch(`/admin/sellers/${id}/recalculate`, {method:'POST'}).then(r=>r.json());
+    btn.textContent = `✓ ${r.trust_score}`;
+    setTimeout(() => loadSellers(), 800);
+  } catch { btn.textContent = '✕'; btn.disabled = false; }
+}
+
+loadSellers();
+</script>
+{% endblock %}

@@ -1,0 +1,838 @@
+{% extends "base.html" %}
+{% block title %}Manage — TrustMart{% endblock %}
+{% block content %}
+
+<div class="mb-5 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">⚙️ Manage</h1>
+    <p class="text-sm text-gray-500 mt-0.5">Add, edit, and delete sellers, buyers, products and complaints</p>
+  </div>
+  <div id="api-status" class="flex items-center gap-2 text-sm">
+    <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-gray-300 inline-block"></span>
+    <span id="status-text" class="text-gray-400">Connecting…</span>
+  </div>
+</div>
+
+<!-- Tab bar -->
+<div class="flex gap-1 border-b border-gray-200 mb-6 overflow-x-auto pb-px">
+  <button class="manage-tab active" onclick="showTab('sellers',this)">🏪 Sellers</button>
+  <button class="manage-tab" onclick="showTab('buyers',this)">👤 Buyers</button>
+  <button class="manage-tab" onclick="showTab('products',this)">📦 Products</button>
+  <button class="manage-tab" onclick="showTab('complaints',this)">🚩 Complaints</button>
+  <button class="manage-tab" onclick="showTab('advisory',this)">📊 Trust Advisory</button>
+</div>
+
+<!-- ═══════════════════ SELLERS ═══════════════════ -->
+<div id="tab-sellers" class="manage-pane">
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+    <!-- Form panel -->
+    <div class="lg:col-span-2 space-y-4">
+      <!-- Add -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><span class="text-green-500 text-lg">+</span> Add Seller</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Name <span class="text-red-400">*</span></label>
+            <input id="s-add-name" type="text" placeholder="e.g. TechZone Store" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Account Age (days)</label>
+            <input id="s-add-days" type="number" value="365" min="0" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <p class="text-xs text-gray-400 mt-1">0–29 days = new account penalty on trust score</p>
+          </div>
+        </div>
+        <button onclick="addSeller()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">Add Seller</button>
+        <div id="s-add-msg" class="mt-2 text-sm hidden"></div>
+      </div>
+
+      <!-- Edit -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><span class="text-blue-500 text-lg">✏</span> Edit Seller</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Seller to edit</label>
+            <select id="s-edit-sel" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none" onchange="prefillSeller()">
+              <option value="">Select a seller…</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">New Name</label>
+            <input id="s-edit-name" type="text" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Account Age (days)</label>
+            <input id="s-edit-days" type="number" min="0" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+        </div>
+        <button onclick="editSeller()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">Save Changes</button>
+        <div id="s-edit-msg" class="mt-2 text-sm hidden"></div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="lg:col-span-3">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-gray-800">All Sellers</h3>
+          <button onclick="loadSellers()" class="text-xs text-indigo-600 hover:underline">↻ Refresh</button>
+        </div>
+        <div id="sellers-table"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ BUYERS ═══════════════════ -->
+<div id="tab-buyers" class="manage-pane hidden">
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+    <div class="lg:col-span-2 space-y-4">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-bold text-gray-800 mb-4"><span class="text-green-500">+</span> Add Buyer</h3>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Name <span class="text-red-400">*</span></label>
+          <input id="b-add-name" type="text" placeholder="e.g. Alice Johnson" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          <p class="text-xs text-gray-400 mt-1">Starts with credibility 100. Decreases with invalid complaints.</p>
+        </div>
+        <button onclick="addBuyer()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">Add Buyer</button>
+        <div id="b-add-msg" class="mt-2 text-sm hidden"></div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-bold text-gray-800 mb-4"><span class="text-blue-500">✏</span> Edit Buyer</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Buyer to edit</label>
+            <select id="b-edit-sel" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none" onchange="prefillBuyer()">
+              <option value="">Select a buyer…</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">New Name</label>
+            <input id="b-edit-name" type="text" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+        </div>
+        <button onclick="editBuyer()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">Save Changes</button>
+        <div id="b-edit-msg" class="mt-2 text-sm hidden"></div>
+      </div>
+    </div>
+    <div class="lg:col-span-3">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-gray-800">All Buyers</h3>
+          <button onclick="loadBuyers()" class="text-xs text-indigo-600 hover:underline">↻ Refresh</button>
+        </div>
+        <div id="buyers-table"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ PRODUCTS ═══════════════════ -->
+<div id="tab-products" class="manage-pane hidden">
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+    <div class="lg:col-span-2 space-y-4">
+      <!-- Add product -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-bold text-gray-800 mb-4"><span class="text-green-500">+</span> Add Product</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Title <span class="text-red-400">*</span></label>
+            <input id="p-add-title" type="text" placeholder="e.g. iPhone 14 Pro 256GB" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 mb-1">Price ($) <span class="text-red-400">*</span></label>
+              <input id="p-add-price" type="number" step="0.01" placeholder="899.99" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 mb-1">Market Price ($) <span class="text-red-400">*</span></label>
+              <input id="p-add-market" type="number" step="0.01" placeholder="1099.99" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Seller <span class="text-red-400">*</span></label>
+            <select id="p-add-seller" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="">Select seller…</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Product Image</label>
+            <input type="file" id="p-add-img" accept=".jpg,.jpeg,.png,.webp" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm" onchange="previewImg('p-add-img','p-add-preview')">
+            <div id="p-add-preview" class="mt-2"></div>
+            <p class="text-xs text-gray-400 mt-1">jpg/png/webp · max 5 MB · AI compares to complaint evidence</p>
+          </div>
+        </div>
+        <button onclick="addProduct()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">Add Product</button>
+        <div id="p-add-msg" class="mt-2 text-sm hidden"></div>
+      </div>
+
+      <!-- Edit product -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-bold text-gray-800 mb-4"><span class="text-blue-500">✏</span> Edit Product</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Product to edit</label>
+            <select id="p-edit-sel" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none" onchange="prefillProduct()">
+              <option value="">Select a product…</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Title</label>
+            <input id="p-edit-title" type="text" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 mb-1">Price ($)</label>
+              <input id="p-edit-price" type="number" step="0.01" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 mb-1">Market Price ($)</label>
+              <input id="p-edit-market" type="number" step="0.01" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Replace Image (optional)</label>
+            <input type="file" id="p-edit-img" accept=".jpg,.jpeg,.png,.webp" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm" onchange="previewImg('p-edit-img','p-edit-preview')">
+            <div id="p-edit-preview" class="mt-2"></div>
+          </div>
+        </div>
+        <button onclick="editProduct()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">Save Changes</button>
+        <div id="p-edit-msg" class="mt-2 text-sm hidden"></div>
+      </div>
+    </div>
+
+    <!-- Products table -->
+    <div class="lg:col-span-3">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-gray-800">All Products</h3>
+          <button onclick="loadProducts()" class="text-xs text-indigo-600 hover:underline">↻ Refresh</button>
+        </div>
+        <div id="products-table"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ COMPLAINTS ═══════════════════ -->
+<div id="tab-complaints" class="manage-pane hidden">
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+    <!-- Submit + Update form -->
+    <div class="lg:col-span-2 space-y-4">
+      <!-- Submit -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-bold text-gray-800 mb-4"><span class="text-red-500">+</span> Submit Complaint</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Buyer <span class="text-red-400">*</span></label>
+            <select id="c-add-buyer" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="">Select buyer…</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Seller <span class="text-red-400">*</span></label>
+            <select id="c-add-seller" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" onchange="loadComplaintProducts()">
+              <option value="">Select seller…</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Product <span class="text-red-400">*</span></label>
+            <select id="c-add-product" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="">Select seller first…</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Description <span class="text-red-400">*</span></label>
+            <textarea id="c-add-text" rows="3" placeholder="Describe the issue…" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300">The product received looks completely different from the listing. Appears to be a fake counterfeit item.</textarea>
+            <div id="c-sev-preview" class="text-xs mt-1 text-indigo-600 font-medium"></div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Evidence Photo</label>
+            <input type="file" id="c-add-img" accept=".jpg,.jpeg,.png,.webp" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm" onchange="previewImg('c-add-img','c-add-preview')">
+            <div id="c-add-preview" class="mt-2"></div>
+            <p class="text-xs text-gray-400 mt-1">AI compares this to the product listing image</p>
+          </div>
+        </div>
+        <button onclick="submitComplaint()" class="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">🚩 Submit Complaint</button>
+        <div id="c-add-msg" class="mt-2 text-sm hidden"></div>
+      </div>
+
+      <!-- Update -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-bold text-gray-800 mb-4"><span class="text-blue-500">✏</span> Update Complaint</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Complaint ID</label>
+            <input id="c-upd-id" type="number" placeholder="Enter complaint ID" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+            <select id="c-upd-status" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="">— no change —</option>
+              <option value="open">open</option>
+              <option value="resolved">resolved</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Updated Text (optional)</label>
+            <textarea id="c-upd-text" rows="2" placeholder="Leave blank to keep existing" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"></textarea>
+          </div>
+        </div>
+        <button onclick="updateComplaint()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">Update Complaint</button>
+        <div id="c-upd-msg" class="mt-2 text-sm hidden"></div>
+      </div>
+    </div>
+
+    <!-- Complaints table -->
+    <div class="lg:col-span-3">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-gray-800">All Complaints</h3>
+          <div class="flex items-center gap-2">
+            <select id="c-filter" onchange="loadComplaints()" class="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none">
+              <option value="">All</option>
+              <option value="open">Open only</option>
+              <option value="resolved">Resolved only</option>
+            </select>
+            <button onclick="loadComplaints()" class="text-xs text-indigo-600 hover:underline">↻ Refresh</button>
+          </div>
+        </div>
+        <div id="complaints-table"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ ADVISORY ═══════════════════ -->
+<div id="tab-advisory" class="manage-pane hidden">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <div>
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h3 class="font-bold text-gray-800 mb-4">📊 Trust Advisory</h3>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 mb-1">Select Seller</label>
+          <select id="adv-sel" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <option value="">Select a seller…</option>
+          </select>
+        </div>
+        <button onclick="loadAdvisory()" class="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">Get Trust Report</button>
+      </div>
+      <div id="adv-summary" class="mt-4 hidden bg-white rounded-2xl border border-gray-100 shadow-sm p-5"></div>
+    </div>
+    <div class="lg:col-span-2">
+      <div id="adv-signals" class="hidden bg-white rounded-2xl border border-gray-100 shadow-sm p-5"></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+.manage-tab{padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;color:#64748b;background:none;border-left:none;border-right:none;border-top:none;white-space:nowrap;transition:all .15s}
+.manage-tab.active{border-bottom-color:#6366f1;color:#4338ca}
+.manage-tab:hover:not(.active){color:#334155}
+.manage-pane.hidden{display:none}
+.row-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #f1f5f9;border-radius:12px;margin-bottom:6px;font-size:13px;transition:border-color .15s}
+.row-item:hover{border-color:#c7d2fe;background:#fafaf9}
+.del-btn{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;transition:all .15s}
+.del-btn:hover{background:#fee2e2}
+.edit-quick{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;transition:all .15s}
+.edit-quick:hover{background:#dbeafe}
+.trust-mini{width:50px;height:6px;background:#e2e8f0;border-radius:9999px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:4px}
+.trust-mini-fill{height:100%;border-radius:9999px;transition:width .6s}
+.badge-sm{padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600}
+.msg-ok{color:#166534;background:#f0fdf4;border:1px solid #86efac;padding:6px 10px;border-radius:8px;font-size:12px}
+.msg-err{color:#991b1b;background:#fef2f2;border:1px solid #fca5a5;padding:6px 10px;border-radius:8px;font-size:12px}
+.feat-bar{height:6px;background:#e2e8f0;border-radius:9999px;overflow:hidden;flex:1}
+.feat-bar-fill{height:100%;border-radius:9999px;transition:width .6s}
+.spinner-sm{width:14px;height:14px;border:2px solid #e2e8f0;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _sellers=[], _buyers=[], _products=[];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const e=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const scoreCol=s=>s>=70?'#10b981':s>=40?'#f59e0b':'#ef4444';
+const riskLabel=s=>s>=70?'Safe':s>=40?'Caution':'High Risk';
+const badgeCls=s=>s>=70?'bg-green-100 text-green-700':s>=40?'bg-yellow-100 text-yellow-700':'bg-red-100 text-red-700';
+
+function showMsg(id,msg,ok=true){
+  const el=document.getElementById(id);
+  el.className=ok?'mt-2 msg-ok':'mt-2 msg-err';
+  el.textContent=msg; el.classList.remove('hidden');
+  setTimeout(()=>el.classList.add('hidden'),4000);
+}
+
+async function api(method,path,body){
+  const opts={method,headers:{}};
+  if(body instanceof FormData) opts.body=body;
+  else if(body){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(body);}
+  const r=await fetch(path,opts);
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.detail||JSON.stringify(j)||`HTTP ${r.status}`);
+  return j;
+}
+
+function previewImg(inputId,previewId){
+  const file=document.getElementById(inputId).files[0];
+  if(!file)return;
+  const url=URL.createObjectURL(file);
+  document.getElementById(previewId).innerHTML=`<img src="${url}" class="max-h-24 rounded-lg border border-gray-100 object-cover">`;
+}
+
+function showTab(name,btn){
+  document.querySelectorAll('.manage-pane').forEach(p=>p.classList.add('hidden'));
+  document.getElementById('tab-'+name).classList.remove('hidden');
+  document.querySelectorAll('.manage-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(name==='sellers') loadSellers();
+  if(name==='buyers') loadBuyers();
+  if(name==='products') loadProducts();
+  if(name==='complaints') loadComplaints();
+  if(name==='advisory') populateAdvisoryDropdown();
+}
+
+function populateSelect(id,items,labelFn,valueFn=i=>i.id,placeholder='Select…'){
+  const sel=document.getElementById(id);
+  if(!sel)return;
+  sel.innerHTML=`<option value="">${placeholder}</option>`+items.map(i=>`<option value="${valueFn(i)}">${e(labelFn(i))}</option>`).join('');
+}
+
+// ── Health ────────────────────────────────────────────────────────────────────
+(async()=>{
+  try{
+    await api('GET','/health');
+    document.getElementById('status-dot').style.background='#10b981';
+    document.getElementById('status-text').textContent='API online';
+  }catch{
+    document.getElementById('status-dot').style.background='#ef4444';
+    document.getElementById('status-text').textContent='API offline — start the server';
+  }
+})();
+
+// ── Keywords for severity preview ─────────────────────────────────────────────
+const KW={fraud:3,fake:3,scam:3,counterfeit:3,wrong:2,broken:2,damaged:2,missing:2,'not working':2,defective:2,different:1,poor:1,bad:1};
+document.getElementById('c-add-text').addEventListener('input',function(){
+  let raw=0; const txt=this.value.toLowerCase();
+  for(const[k,w] of Object.entries(KW)) if(txt.includes(k)) raw+=w;
+  const sev=Math.max(1,Math.min(5,Math.round(raw/5*2)));
+  const cols=['','#10b981','#84cc16','#f59e0b','#ef4444','#dc2626'];
+  const labels=['','Minor','Low','Moderate','High','Critical'];
+  const dots='●'.repeat(sev)+'○'.repeat(5-sev);
+  document.getElementById('c-sev-preview').innerHTML=raw>0
+    ?`<span style="color:${cols[sev]}">Predicted severity: ${dots} ${labels[sev]} (${sev}/5)</span>`
+    :'';
+});
+
+// ════════════════════ SELLERS ════════════════════
+
+async function loadSellers(){
+  _sellers=await api('GET','/sellers/all?limit=500').catch(()=>[]);
+  populateSelect('s-edit-sel',_sellers,s=>`${s.name} (ID:${s.id})`);
+  populateSelect('p-add-seller',_sellers,s=>`${s.name} (ID:${s.id})`)
+  populateSelect('c-add-seller',_sellers,s=>`${s.name} (ID:${s.id})`);
+  populateSelect('adv-sel',_sellers,s=>`${s.name} — Trust: ${s.trust_score}`);
+
+  const el=document.getElementById('sellers-table');
+  if(!_sellers.length){el.innerHTML='<p class="text-sm text-gray-400 text-center py-8">No sellers yet. Add one!</p>';return;}
+  el.innerHTML=_sellers.map(s=>`
+    <div class="row-item">
+      <div class="flex-1 min-w-0">
+        <span class="font-semibold">${e(s.name)}</span>
+        <span class="text-xs text-gray-400 ml-2">ID:${s.id} · ${s.account_age_days}d</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-weight:700;color:${scoreCol(s.trust_score)};font-size:13px">${s.trust_score}</span>
+        <div class="trust-mini"><div class="trust-mini-fill" style="width:${s.trust_score}%;background:${scoreCol(s.trust_score)}"></div></div>
+        <span class="badge-sm ${badgeCls(s.trust_score)}">${riskLabel(s.trust_score)}</span>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="edit-quick" onclick="quickEditSeller(${s.id},'${e(s.name)}',${s.account_age_days})">Edit</button>
+        <button class="del-btn" onclick="deleteSeller(${s.id},'${e(s.name)}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+async function addSeller(){
+  const name=document.getElementById('s-add-name').value.trim();
+  const days=parseInt(document.getElementById('s-add-days').value)||0;
+  if(!name){showMsg('s-add-msg','Name is required',false);return;}
+  try{
+    const s=await api('POST','/sellers/add',{name,account_age_days:days});
+    showMsg('s-add-msg',`✓ Seller "${s.name}" created (ID: ${s.id})`);
+    document.getElementById('s-add-name').value='';
+    loadSellers();
+  }catch(err){showMsg('s-add-msg',err.message,false);}
+}
+
+function prefillSeller(){
+  const sid=document.getElementById('s-edit-sel').value;
+  const s=_sellers.find(x=>x.id==sid);
+  if(!s)return;
+  document.getElementById('s-edit-name').value=s.name;
+  document.getElementById('s-edit-days').value=s.account_age_days;
+}
+
+function quickEditSeller(id,name,days){
+  document.getElementById('s-edit-sel').value=id;
+  document.getElementById('s-edit-name').value=name;
+  document.getElementById('s-edit-days').value=days;
+  document.getElementById('s-edit-name').focus();
+  document.getElementById('s-edit-sel').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+async function editSeller(){
+  const sid=document.getElementById('s-edit-sel').value;
+  const name=document.getElementById('s-edit-name').value.trim();
+  const days=parseInt(document.getElementById('s-edit-days').value)||0;
+  if(!sid||!name){showMsg('s-edit-msg','Select a seller and enter a name',false);return;}
+  try{
+    const s=await api('PUT',`/sellers/${sid}`,{name,account_age_days:days});
+    showMsg('s-edit-msg',`✓ Seller updated → "${s.name}"`);
+    loadSellers();
+  }catch(err){showMsg('s-edit-msg',err.message,false);}
+}
+
+async function deleteSeller(id,name){
+  if(!confirm(`Delete seller "${name}" and ALL their products and complaints?\nThis cannot be undone.`))return;
+  try{
+    const r=await api('DELETE',`/sellers/${id}`);
+    showMsg('s-edit-msg',`✓ Deleted. Removed ${r.deleted_products} products and ${r.deleted_complaints} complaints.`);
+    loadSellers();
+  }catch(err){showMsg('s-edit-msg',err.message,false);}
+}
+
+// ════════════════════ BUYERS ════════════════════
+
+async function loadBuyers(){
+  _buyers=await api('GET','/buyers/all?limit=500').catch(()=>[]);
+  populateSelect('b-edit-sel',_buyers,b=>`${b.name} (ID:${b.id} · Cred:${b.credibility_score})`);
+  populateSelect('c-add-buyer',_buyers,b=>`${b.name} (ID:${b.id})`);
+
+  const el=document.getElementById('buyers-table');
+  if(!_buyers.length){el.innerHTML='<p class="text-sm text-gray-400 text-center py-8">No buyers yet.</p>';return;}
+  el.innerHTML=_buyers.map(b=>`
+    <div class="row-item">
+      <div class="flex-1 min-w-0">
+        <span class="font-semibold">${e(b.name)}</span>
+        <span class="text-xs text-gray-400 ml-2">ID:${b.id}</span>
+        ${b.spam_flag_count>0?`<span class="badge-sm bg-red-100 text-red-700 ml-1">⚠ ${b.spam_flag_count} spam</span>`:''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-weight:700;color:${scoreCol(b.credibility_score)};font-size:13px">Cred: ${b.credibility_score}</span>
+        <div class="trust-mini"><div class="trust-mini-fill" style="width:${b.credibility_score}%;background:${scoreCol(b.credibility_score)}"></div></div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="edit-quick" onclick="quickEditBuyer(${b.id},'${e(b.name)}')">Edit</button>
+        <button class="del-btn" onclick="deleteBuyer(${b.id},'${e(b.name)}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+async function addBuyer(){
+  const name=document.getElementById('b-add-name').value.trim();
+  if(!name){showMsg('b-add-msg','Name is required',false);return;}
+  try{
+    const b=await api('POST','/buyers/add',{name});
+    showMsg('b-add-msg',`✓ Buyer "${b.name}" created (ID: ${b.id})`);
+    document.getElementById('b-add-name').value='';
+    loadBuyers();
+  }catch(err){showMsg('b-add-msg',err.message,false);}
+}
+
+function prefillBuyer(){
+  const b=_buyers.find(x=>x.id==document.getElementById('b-edit-sel').value);
+  if(b) document.getElementById('b-edit-name').value=b.name;
+}
+function quickEditBuyer(id,name){
+  document.getElementById('b-edit-sel').value=id;
+  document.getElementById('b-edit-name').value=name;
+  document.getElementById('b-edit-name').focus();
+  document.getElementById('b-edit-sel').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function editBuyer(){
+  const bid=document.getElementById('b-edit-sel').value;
+  const name=document.getElementById('b-edit-name').value.trim();
+  if(!bid||!name){showMsg('b-edit-msg','Select a buyer and enter a name',false);return;}
+  try{
+    const b=await api('PUT',`/buyers/${bid}`,{name});
+    showMsg('b-edit-msg',`✓ Buyer updated → "${b.name}"`);
+    loadBuyers();
+  }catch(err){showMsg('b-edit-msg',err.message,false);}
+}
+async function deleteBuyer(id,name){
+  if(!confirm(`Delete buyer "${name}" and all their complaints?`))return;
+  try{
+    const r=await api('DELETE',`/buyers/${id}`);
+    showMsg('b-edit-msg',`✓ Deleted buyer. Removed ${r.deleted_complaints} complaints.`);
+    loadBuyers();
+  }catch(err){showMsg('b-edit-msg',err.message,false);}
+}
+
+// ════════════════════ PRODUCTS ════════════════════
+
+async function loadProducts(){
+  if(!_sellers.length) await loadSellers();
+  _products=await api('GET','/products/all?limit=500').catch(()=>[]);
+  populateSelect('p-edit-sel',_products,p=>`${p.title} — $${p.price} (ID:${p.id})`);
+
+  const el=document.getElementById('products-table');
+  if(!_products.length){el.innerHTML='<p class="text-sm text-gray-400 text-center py-8">No products yet.</p>';return;}
+  el.innerHTML=_products.map(p=>{
+    const anomaly=p.price<0.6*p.market_price;
+    const seller=_sellers.find(s=>s.id===p.seller_id);
+    return `
+    <div class="row-item">
+      <div style="width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:16px">
+        ${p.image_path?`<img src="/${p.image_path}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent='📦'">`:'📦'}
+      </div>
+      <div class="flex-1 min-w-0 ml-2">
+        <div class="font-semibold text-sm truncate">${e(p.title)}</div>
+        <div class="text-xs text-gray-400 mt-0.5">
+          $${p.price.toFixed(2)} <span class="line-through">$${p.market_price.toFixed(2)}</span>
+          · ${seller?e(seller.name):'Seller #'+p.seller_id}
+          ${anomaly?'<span class="text-orange-500 font-semibold ml-1">⚠ price anomaly</span>':''}
+        </div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="edit-quick" onclick="quickEditProduct(${p.id})">Edit</button>
+        <button class="del-btn" onclick="deleteProduct(${p.id},'${e(p.title)}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function addProduct(){
+  const title=document.getElementById('p-add-title').value.trim();
+  const price=parseFloat(document.getElementById('p-add-price').value);
+  const market=parseFloat(document.getElementById('p-add-market').value);
+  const seller_id=document.getElementById('p-add-seller').value;
+  const imgFile=document.getElementById('p-add-img').files[0];
+  if(!title||!price||!market||!seller_id){showMsg('p-add-msg','Fill all required fields',false);return;}
+  const fd=new FormData();
+  fd.append('title',title);fd.append('price',price);fd.append('market_price',market);fd.append('seller_id',seller_id);
+  if(imgFile) fd.append('image',imgFile);
+  try{
+    const p=await api('POST','/products/add',fd);
+    const anomaly=p.price<0.6*p.market_price;
+    showMsg('p-add-msg',`✓ Product "${p.title}" added (ID:${p.id})${anomaly?' ⚠ Price anomaly detected':''}`);
+    document.getElementById('p-add-title').value='';
+    document.getElementById('p-add-img').value='';
+    document.getElementById('p-add-preview').innerHTML='';
+    loadProducts();
+  }catch(err){showMsg('p-add-msg',err.message,false);}
+}
+
+function prefillProduct(){
+  const p=_products.find(x=>x.id==document.getElementById('p-edit-sel').value);
+  if(!p)return;
+  document.getElementById('p-edit-title').value=p.title;
+  document.getElementById('p-edit-price').value=p.price;
+  document.getElementById('p-edit-market').value=p.market_price;
+  document.getElementById('p-edit-preview').innerHTML=p.image_path?`<img src="/${p.image_path}" class="max-h-16 rounded-lg border border-gray-100">`:''
+}
+function quickEditProduct(id){
+  document.getElementById('p-edit-sel').value=id;
+  prefillProduct();
+  document.getElementById('p-edit-title').focus();
+  document.getElementById('p-edit-sel').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function editProduct(){
+  const pid=document.getElementById('p-edit-sel').value;
+  const title=document.getElementById('p-edit-title').value.trim();
+  const price=parseFloat(document.getElementById('p-edit-price').value);
+  const market=parseFloat(document.getElementById('p-edit-market').value);
+  const imgFile=document.getElementById('p-edit-img').files[0];
+  if(!pid||!title||!price||!market){showMsg('p-edit-msg','Select a product and fill all fields',false);return;}
+  const fd=new FormData();
+  fd.append('title',title);fd.append('price',price);fd.append('market_price',market);
+  if(imgFile) fd.append('image',imgFile);
+  try{
+    const p=await api('PUT',`/products/${pid}`,fd);
+    showMsg('p-edit-msg',`✓ Product updated → "${p.title}"`);
+    loadProducts();
+  }catch(err){showMsg('p-edit-msg',err.message,false);}
+}
+async function deleteProduct(id,title){
+  if(!confirm(`Delete product "${title}"?`))return;
+  try{
+    const r=await api('DELETE',`/products/${id}`);
+    showMsg('p-edit-msg',`✓ Deleted. Removed ${r.deleted_complaints} related complaints.`);
+    loadProducts();
+  }catch(err){showMsg('p-edit-msg',err.message,false);}
+}
+
+// ════════════════════ COMPLAINTS ════════════════════
+
+async function loadComplaintProducts(){
+  const sid=document.getElementById('c-add-seller').value;
+  const sel=document.getElementById('c-add-product');
+  if(!sid){sel.innerHTML='<option value="">Select seller first…</option>';return;}
+  const prods=await api('GET',`/products/seller/${sid}`).catch(()=>[]);
+  sel.innerHTML=prods.length
+    ?'<option value="">Select product…</option>'+prods.map(p=>`<option value="${p.id}">${e(p.title)} — $${p.price}</option>`).join('')
+    :'<option value="">No products for this seller</option>';
+}
+
+async function submitComplaint(){
+  const buyer=document.getElementById('c-add-buyer').value;
+  const seller=document.getElementById('c-add-seller').value;
+  const product=document.getElementById('c-add-product').value;
+  const text=document.getElementById('c-add-text').value.trim();
+  const imgFile=document.getElementById('c-add-img').files[0];
+  if(!buyer||!seller||!product||text.length<5){showMsg('c-add-msg','Fill all required fields (text min 5 chars)',false);return;}
+  const fd=new FormData();
+  fd.append('buyer_id',buyer);fd.append('seller_id',seller);
+  fd.append('product_id',product);fd.append('complaint_text',text);
+  if(imgFile) fd.append('received_image',imgFile);
+  try{
+    const r=await api('POST','/complaints/add',fd);
+    const cid=r.complaint_id||r.complaint?.id;
+    showMsg('c-add-msg',`✓ Complaint #${cid} submitted. Poll to track processing.`);
+    document.getElementById('c-upd-id').value=cid;
+    loadComplaints();
+  }catch(err){showMsg('c-add-msg',err.message,false);}
+}
+
+async function loadComplaints(){
+  if(!_buyers.length) await loadBuyers();
+  if(!_sellers.length) await loadSellers();
+  const filter=document.getElementById('c-filter').value;
+  const url=filter?`/complaints/all?limit=100`:'/complaints/all?limit=100';
+  const complaints=await api('GET',url).catch(()=>[]);
+  const filtered=filter?complaints.filter(c=>c.status===filter):complaints;
+  const el=document.getElementById('complaints-table');
+  if(!filtered.length){el.innerHTML='<p class="text-sm text-gray-400 text-center py-8">No complaints.</p>';return;}
+  const sevCol=v=>v>=4?'#ef4444':v>=3?'#f59e0b':v>=2?'#84cc16':'#10b981';
+  const labels={pending:'bg-purple-100 text-purple-700',approved:'bg-green-100 text-green-700',rejected:'bg-red-100 text-red-700',spam:'bg-orange-100 text-orange-700'};
+  el.innerHTML=filtered.slice().reverse().map(c=>`
+    <div class="row-item flex-wrap gap-y-2">
+      <span class="text-xs font-bold text-gray-400 shrink-0">#${c.id}</span>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm text-gray-700 truncate">${e(c.complaint_text.slice(0,60))}${c.complaint_text.length>60?'…':''}</p>
+        <div class="flex flex-wrap gap-1.5 mt-1">
+          <span class="badge-sm ${c.status==='open'?'bg-red-100 text-red-700':'bg-gray-100 text-gray-500'}">${c.status}</span>
+          <span class="badge-sm ${labels[c.admin_status]||'bg-gray-100 text-gray-500'}">${c.admin_status}</span>
+          ${c.processing_status==='done'?`
+            <span class="badge-sm bg-indigo-50 text-indigo-700" style="font-weight:600;color:${sevCol(c.severity_level)}">sev ${c.severity_level}/5</span>
+            <span class="badge-sm bg-indigo-50 text-indigo-700">${(c.visual_mismatch_score*100).toFixed(0)}% mismatch</span>
+          `:`<span class="badge-sm bg-blue-50 text-blue-600">⏳ processing</span>`}
+        </div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="edit-quick" onclick="document.getElementById('c-upd-id').value=${c.id};document.getElementById('c-upd-status').value='${c.status}'">Edit</button>
+        ${c.admin_status==='pending'?`<button class="edit-quick" style="background:#f0fdf4;border-color:#86efac;color:#166534" onclick="adminApprove(${c.id})">✓ Approve</button>
+        <button class="del-btn" onclick="adminReject(${c.id})">✗ Reject</button>`:''}
+      </div>
+    </div>`).join('');
+}
+
+async function updateComplaint(){
+  const id=document.getElementById('c-upd-id').value;
+  const status=document.getElementById('c-upd-status').value;
+  const text=document.getElementById('c-upd-text').value.trim();
+  if(!id){showMsg('c-upd-msg','Enter a complaint ID',false);return;}
+  if(!status&&!text){showMsg('c-upd-msg','Select a status or enter updated text',false);return;}
+  const body={complaint_id:parseInt(id)};
+  if(status) body.status=status;
+  if(text) body.complaint_text=text;
+  try{
+    const c=await api('PUT','/complaints/update',body);
+    showMsg('c-upd-msg',`✓ Complaint #${c.id} updated → ${c.status}`);
+    loadComplaints();
+  }catch(err){showMsg('c-upd-msg',err.message,false);}
+}
+
+async function adminApprove(id){
+  try{
+    const r=await api('PUT',`/admin/complaints/${id}/approve`);
+    showMsg('c-upd-msg',`✓ Complaint #${id} approved. Buyer cred: ${r.buyer_credibility_after}. Seller trust: ${r.seller_trust_after}.`);
+    loadComplaints();
+  }catch(err){showMsg('c-upd-msg',err.message,false);}
+}
+async function adminReject(id){
+  if(!confirm(`Reject complaint #${id}? Buyer will lose 3 credibility points.`))return;
+  try{
+    const r=await api('PUT',`/admin/complaints/${id}/reject`);
+    showMsg('c-upd-msg',`✓ Complaint #${id} rejected. Buyer cred: ${r.buyer_credibility_after}.`);
+    loadComplaints();
+  }catch(err){showMsg('c-upd-msg',err.message,false);}
+}
+
+// ════════════════════ ADVISORY ════════════════════
+
+async function populateAdvisoryDropdown(){
+  if(!_sellers.length) await loadSellers();
+  populateSelect('adv-sel',_sellers,s=>`${s.name} (Trust: ${s.trust_score})`);
+}
+
+async function loadAdvisory(){
+  const sid=document.getElementById('adv-sel').value;
+  if(!sid)return;
+  try{
+    const adv=await api('GET',`/advisory/seller/${sid}`);
+    const score=adv.trust_score, col=scoreCol(score);
+    document.getElementById('adv-summary').classList.remove('hidden');
+    document.getElementById('adv-signals').classList.remove('hidden');
+    document.getElementById('adv-summary').innerHTML=`
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:72px;height:72px;border-radius:50%;border:5px solid ${col};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:${col};background:${score>=70?'#f0fdf4':score>=40?'#fefce8':'#fef2f2'}">
+          ${score}
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:15px">${e(adv.seller_name)}</div>
+          <span class="badge-sm ${badgeCls(score)}" style="margin-top:4px;display:inline-block">${adv.risk_level}</span>
+        </div>
+      </div>
+      <div style="height:8px;background:#e2e8f0;border-radius:9999px;overflow:hidden;margin-bottom:6px">
+        <div style="width:${score}%;height:100%;border-radius:9999px;background:${col};transition:width .8s"></div>
+      </div>
+      <div style="font-size:12px;font-weight:500;text-align:center;padding:8px;border-radius:8px;background:${score>=70?'#f0fdf4':score>=40?'#fefce8':'#fef2f2'};color:${score>=70?'#166534':score>=40?'#854d0e':'#991b1b'}">${e(adv.recommendation)}</div>
+      <div style="margin-top:12px;space-y:4px">
+        ${(adv.reasons||[]).map(r=>`<div style="display:flex;gap:6px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px;color:#374151"><span style="color:#f59e0b">⚠</span>${e(r)}</div>`).join('')||'<div style="font-size:12px;color:#10b981">✓ No risk factors</div>'}
+      </div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:8px;text-align:center">AI model: ${adv.ai_model_used}</div>`;
+
+    const s=adv.signals;
+    const WEIGHTS={open_complaint_ratio:.25,avg_severity:.20,mean_visual_mismatch:.20,buyer_credibility_weighted_sev:.15,price_anomaly_ratio:.10,complaint_frequency:.05,account_age_penalty:.05};
+    const LABELS={open_complaint_ratio:'Open complaint ratio',avg_severity:'Avg severity',mean_visual_mismatch:'Mean visual mismatch',buyer_credibility_weighted_sev:'Cred-weighted severity',price_anomaly_ratio:'Price anomaly ratio',complaint_frequency:'Complaint frequency',account_age_penalty:'Account age penalty'};
+    const features={open_complaint_ratio:Math.min(1,s.open_complaints/Math.max(1,s.total_complaints)),avg_severity:s.avg_severity/5,mean_visual_mismatch:s.mean_visual_mismatch,buyer_credibility_weighted_sev:s.buyer_credibility_weighted_sev/5,price_anomaly_ratio:s.price_anomaly_ratio,complaint_frequency:Math.min(1,s.complaint_frequency/10),account_age_penalty:s.account_age_penalty};
+    document.getElementById('adv-signals').innerHTML=`
+      <div style="font-weight:700;font-size:14px;margin-bottom:14px">Feature Vector — What drove the score</div>
+      ${Object.entries(LABELS).map(([k,label])=>{
+        const val=features[k]||0, w=WEIGHTS[k]||0, pct=Math.round(val*100);
+        const bc=pct>75?'#ef4444':pct>50?'#f59e0b':pct>25?'#84cc16':'#10b981';
+        const contrib=(val*w*100).toFixed(1);
+        return `<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #f8fafc;font-size:12px">
+          <div><div style="font-weight:500">${label}</div><div style="color:#94a3b8;font-size:10px">weight: ${(w*100).toFixed(0)}%</div></div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div class="feat-bar"><div class="feat-bar-fill" style="width:${pct}%;background:${bc}"></div></div>
+            <span style="font-size:11px;font-weight:600;color:${bc};min-width:28px">${pct}%</span>
+          </div>
+          <span style="font-size:11px;font-weight:600;color:${parseFloat(contrib)>5?'#ef4444':parseFloat(contrib)>2?'#f59e0b':'#64748b'};min-width:45px;text-align:right">+${contrib} pts</span>
+        </div>`;
+      }).join('')}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:2px solid #e2e8f0">
+        <div>
+          <div style="font-weight:700;font-size:13px">Weighted Risk</div>
+          <div style="font-size:11px;color:#94a3b8">trust = (1 − risk) × 100</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:160px;height:8px;background:#e2e8f0;border-radius:9999px;overflow:hidden">
+            <div style="width:${s.weighted_risk*100}%;height:100%;border-radius:9999px;background:${s.weighted_risk>0.6?'#ef4444':s.weighted_risk>0.3?'#f59e0b':'#10b981'};transition:width .8s"></div>
+          </div>
+          <span style="font-weight:800;font-size:16px;color:${s.weighted_risk>0.6?'#ef4444':s.weighted_risk>0.3?'#f59e0b':'#10b981'}">${(s.weighted_risk*100).toFixed(1)}%</span>
+        </div>
+      </div>`;
+  }catch(err){document.getElementById('adv-summary').innerHTML=`<p style="color:#991b1b;font-size:13px">${e(err.message)}</p>`;}
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadSellers();
+loadBuyers();
+</script>
+{% endblock %}

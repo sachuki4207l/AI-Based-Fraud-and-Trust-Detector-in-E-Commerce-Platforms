@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}My Complaints — TrustMart{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">📋 My Complaints</h1>
+    <p class="text-sm text-gray-500 mt-0.5" id="page-subtitle">Your complaint history</p>
+  </div>
+  <a href="/" class="text-sm text-indigo-600 hover:underline">← Marketplace</a>
+</div>
+
+<!-- No identity guard -->
+<div id="no-identity" class="hidden bg-yellow-50 border border-yellow-200 rounded-2xl p-6 text-center">
+  <div class="text-3xl mb-2">👤</div>
+  <h2 class="font-bold text-yellow-800 mb-1">Set your buyer account first</h2>
+  <p class="text-sm text-yellow-700 mb-4">Select or create a buyer account to see your complaints.</p>
+  <button onclick="showBuyerModal()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+    Set Account
+  </button>
+</div>
+
+<!-- Complaint list -->
+<div id="complaint-container" class="hidden">
+  <div id="loading" class="flex justify-center py-12">
+    <div class="spinner" style="width:30px;height:30px;border-width:3px"></div>
+  </div>
+  <div id="complaints-list" class="space-y-4"></div>
+  <div id="empty" class="hidden text-center py-16">
+    <div class="text-4xl mb-3">🎉</div>
+    <p class="font-semibold text-gray-700">No complaints yet</p>
+    <p class="text-sm text-gray-400 mt-1">Browse the marketplace and report issues if anything's wrong.</p>
+    <a href="/" class="mt-4 inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">Browse Marketplace</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const sevCol = v => v>=4?'#ef4444':v>=3?'#f59e0b':v>=2?'#84cc16':'#16a34a';
+const sevLabel = {1:'Minor',2:'Low',3:'Moderate',4:'High',5:'Critical'};
+const adminCls = {pending:'bg-purple-100 text-purple-700',approved:'bg-green-100 text-green-700',rejected:'bg-red-100 text-red-700',spam:'bg-orange-100 text-orange-700'};
+
+async function loadComplaints() {
+  const buyerId = TM.getBuyerId();
+  if (!buyerId) {
+    document.getElementById('no-identity').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('no-identity').classList.add('hidden');
+  document.getElementById('complaint-container').classList.remove('hidden');
+  document.getElementById('page-subtitle').textContent = `Complaints filed by ${TM.getBuyerName()}`;
+
+  try {
+    const all = await fetch('/complaints/all?limit=500').then(r=>r.json());
+    const mine = all.filter(c => String(c.buyer_id) === String(buyerId));
+    document.getElementById('loading').classList.add('hidden');
+
+    if (!mine.length) { document.getElementById('empty').classList.remove('hidden'); return; }
+
+    // Fetch seller names
+    const sellerIds = [...new Set(mine.map(c=>c.seller_id))];
+    const sellerNames = {};
+    await Promise.all(sellerIds.map(async sid => {
+      try { const s = await fetch(`/sellers/${sid}`).then(r=>r.json()); sellerNames[sid] = s.name; } catch {}
+    }));
+
+    document.getElementById('complaints-list').innerHTML = mine.slice().reverse().map(c => {
+      const isDone = c.processing_status === 'done';
+      const mis = (c.visual_mismatch_score * 100).toFixed(0);
+      return `
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <span class="text-xs font-bold text-gray-400 font-mono">#${c.id}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${c.status==='open'?'bg-red-100 text-red-700':'bg-gray-100 text-gray-500'}">${c.status}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${adminCls[c.admin_status]||'bg-gray-100 text-gray-500'}">${c.admin_status}</span>
+              ${!isDone?`<span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700">⏳ processing</span>`:''}
+            </div>
+            <p class="text-sm text-gray-700 font-medium">${esc(c.complaint_text.slice(0,120))}${c.complaint_text.length>120?'…':''}</p>
+          </div>
+          ${isDone?`
+          <div class="text-right shrink-0">
+            <div class="text-2xl font-black" style="color:${sevCol(c.severity_level)}">${c.severity_level}/5</div>
+            <div class="text-xs font-semibold" style="color:${sevCol(c.severity_level)}">${sevLabel[c.severity_level]||''}</div>
+          </div>`:''}
+        </div>
+        <div class="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 flex-wrap">
+          <div class="flex gap-4 text-xs text-gray-500">
+            <span>Seller: <strong>${esc(sellerNames[c.seller_id]||'#'+c.seller_id)}</strong></span>
+            ${isDone?`<span>Mismatch: <strong style="color:${parseInt(mis)>60?'#ef4444':parseInt(mis)>30?'#f59e0b':'#16a34a'}">${mis}%</strong></span>`:''}
+            <span>${new Date(c.created_at).toLocaleDateString()}</span>
+          </div>
+          <a href="/complaint/${c.id}" class="text-xs text-indigo-600 hover:underline font-semibold">
+            ${isDone ? 'View Results →' : 'Track Status →'}
+          </a>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `<p class="text-red-500 text-sm">${esc(e.message)}</p>`;
+  }
+}
+
+function onBuyerSet() { loadComplaints(); }
+loadComplaints();
+</script>
+{% endblock %}

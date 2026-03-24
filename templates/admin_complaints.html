@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Complaint Moderation — Admin{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <div class="text-xs text-gray-400 mb-0.5">Admin</div>
+    <h1 class="text-2xl font-bold text-gray-900">🚩 Complaint Moderation</h1>
+  </div>
+  <div class="flex gap-2">
+    <a href="/admin-sellers" class="border border-gray-200 hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-xl text-xs font-semibold">👥 Sellers</a>
+    <button onclick="loadComplaints()" class="border border-gray-200 hover:bg-gray-50 text-gray-600 px-3 py-2 rounded-xl text-xs font-semibold">↻ Refresh</button>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-4 gap-3 mb-5">
+  <div class="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
+    <div id="s-pending" class="text-xl font-black text-purple-600">—</div>
+    <div class="text-xs text-gray-400">Pending</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
+    <div id="s-open" class="text-xl font-black text-red-500">—</div>
+    <div class="text-xs text-gray-400">Open</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
+    <div id="s-approved" class="text-xl font-black text-green-600">—</div>
+    <div class="text-xs text-gray-400">Approved</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
+    <div id="s-spam" class="text-xl font-black text-orange-500">—</div>
+    <div class="text-xs text-gray-400">Spam</div>
+  </div>
+</div>
+
+<!-- Filter -->
+<div class="flex gap-2 mb-4 flex-wrap">
+  <button onclick="setFilter('pending',this)" class="filter-btn active">Pending review</button>
+  <button onclick="setFilter('',this)"        class="filter-btn">All</button>
+  <button onclick="setFilter('approved',this)"class="filter-btn">Approved</button>
+  <button onclick="setFilter('rejected',this)"class="filter-btn">Rejected</button>
+  <button onclick="setFilter('spam',this)"    class="filter-btn">Spam</button>
+</div>
+
+<div id="loading" class="flex justify-center py-12">
+  <div class="spinner" style="width:30px;height:30px;border-width:3px"></div>
+</div>
+<div id="complaints-list" class="space-y-4"></div>
+<div id="empty" class="hidden text-center py-12">
+  <div class="text-3xl mb-2">✅</div>
+  <p class="text-gray-400 text-sm">No complaints matching this filter</p>
+</div>
+
+<!-- Global action feedback toast -->
+<div id="toast" class="fixed bottom-6 right-6 hidden z-50 bg-gray-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl"></div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.filter-btn{padding:6px 14px;border-radius:9999px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #e2e8f0;color:#64748b;background:#fff;transition:all .15s}
+.filter-btn.active{border-color:#6366f1;background:#eff6ff;color:#4338ca}
+</style>
+<script>
+let currentFilter = 'pending';
+let allComplaints = [];
+const sevCol = v => v>=4?'#ef4444':v>=3?'#f59e0b':v>=2?'#84cc16':'#16a34a';
+const adminBadgeCls = {pending:'bg-purple-100 text-purple-700',approved:'bg-green-100 text-green-700',rejected:'bg-red-100 text-red-700',spam:'bg-orange-100 text-orange-700'};
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderComplaints();
+}
+
+async function loadComplaints() {
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('complaints-list').innerHTML = '';
+  try {
+    allComplaints = await fetch('/admin/complaints?limit=500').then(r=>r.json());
+    document.getElementById('s-pending').textContent  = allComplaints.filter(c=>c.admin_status==='pending').length;
+    document.getElementById('s-open').textContent     = allComplaints.filter(c=>c.status==='open').length;
+    document.getElementById('s-approved').textContent = allComplaints.filter(c=>c.admin_status==='approved').length;
+    document.getElementById('s-spam').textContent     = allComplaints.filter(c=>c.admin_status==='spam').length;
+    document.getElementById('loading').classList.add('hidden');
+    renderComplaints();
+  } catch(e) { document.getElementById('loading').innerHTML = `<p class="text-red-500 text-sm">Error: ${esc(e.message)}</p>`; }
+}
+
+function renderComplaints() {
+  const filtered = currentFilter
+    ? allComplaints.filter(c => c.admin_status === currentFilter)
+    : allComplaints;
+  const el = document.getElementById('complaints-list');
+  const empty = document.getElementById('empty');
+  if (!filtered.length) { el.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  const isDone = c => c.processing_status === 'done';
+  el.innerHTML = filtered.map(c => `
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5" id="c-card-${c.id}">
+      <div class="flex items-start gap-3">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap mb-2">
+            <span class="text-xs font-bold text-gray-400 font-mono">#${c.id}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${c.status==='open'?'bg-red-100 text-red-700':'bg-gray-100 text-gray-500'}">${c.status}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${adminBadgeCls[c.admin_status]||'bg-gray-100 text-gray-500'}">${c.admin_status}</span>
+            ${!isDone(c)?`<span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700">⏳ AI processing</span>`:''}
+          </div>
+          <p class="text-sm text-gray-700 mb-2">${esc(c.complaint_text.slice(0,150))}${c.complaint_text.length>150?'…':''}</p>
+          <div class="flex gap-4 text-xs text-gray-500 flex-wrap">
+            <span>Buyer <strong>#${c.buyer_id}</strong></span>
+            <span>Seller <strong>#${c.seller_id}</strong> <a href="/admin/signals/${c.seller_id}" class="text-indigo-500 hover:underline">signals</a></span>
+            <span>Product <strong>#${c.product_id}</strong></span>
+            ${isDone(c)?`
+              <span>Severity: <strong style="color:${sevCol(c.severity_level)}">${c.severity_level}/5</strong></span>
+              <span>Mismatch: <strong style="color:${parseInt((c.visual_mismatch_score*100).toFixed(0))>60?'#ef4444':'#16a34a'}">${(c.visual_mismatch_score*100).toFixed(0)}%</strong></span>
+            `:''}
+          </div>
+        </div>
+        <!-- Action buttons — only shown for pending -->
+        <div id="actions-${c.id}" class="flex flex-col gap-2 shrink-0">
+          ${c.admin_status === 'pending' ? `
+          <button onclick="doAction(${c.id},'approve')" class="bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors">
+            ✅ Approve<br><span style="font-weight:400;font-size:10px">Buyer +5 cred</span>
+          </button>
+          <button onclick="doAction(${c.id},'reject')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors">
+            ❌ Reject<br><span style="font-weight:400;font-size:10px">Buyer −3 cred</span>
+          </button>
+          <button onclick="doAction(${c.id},'spam')" class="bg-orange-400 hover:bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors">
+            🚫 Spam<br><span style="font-weight:400;font-size:10px">Buyer −8 cred</span>
+          </button>` : `<div class="text-xs text-gray-300 text-center">Reviewed</div>`}
+        </div>
+      </div>
+      <div id="c-msg-${c.id}" class="hidden mt-3 text-xs px-3 py-2 rounded-lg"></div>
+    </div>`).join('');
+}
+
+async function doAction(id, action) {
+  const url = `/admin/complaints/${id}/${action}`;
+  const labels = {approve:'approved ✅',reject:'rejected ❌',spam:'marked spam 🚫'};
+  const credMsg = {approve:'Buyer +5 cred',reject:'Buyer −3 cred',spam:'Buyer −8 cred, spam+1'};
+  try {
+    const r = await fetch(url, {method:'PUT'});
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail||'Failed'); }
+    const data = await r.json();
+    // Update the card inline
+    const msg = document.getElementById(`c-msg-${id}`);
+    msg.className = 'mt-3 text-xs px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700';
+    msg.textContent = `✓ Complaint ${labels[action]}. ${credMsg[action]}. Seller trust → ${data.seller_trust_after}/100.`;
+    msg.classList.remove('hidden');
+    document.getElementById(`actions-${id}`).innerHTML = '<div class="text-xs text-gray-300">Reviewed</div>';
+    // Update stats
+    allComplaints = allComplaints.map(c => c.id === id ? {...c, admin_status: action === 'spam' ? 'spam' : action === 'approve' ? 'approved' : 'rejected'} : c);
+    document.getElementById('s-pending').textContent = allComplaints.filter(c=>c.admin_status==='pending').length;
+    showToast(`Complaint #${id} ${labels[action]}`);
+  } catch(e) {
+    const msg = document.getElementById(`c-msg-${id}`);
+    msg.className = 'mt-3 text-xs px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-600';
+    msg.textContent = e.message; msg.classList.remove('hidden');
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 3000);
+}
+
+loadComplaints();
+</script>
+{% endblock %}

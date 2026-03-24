@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TrustMart{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/style.css">
+  <script>
+  // ── Identity & Role Management ─────────────────────────────────────────────
+  const TM = {
+    getRole:    () => localStorage.getItem('tm_role') || 'buyer',
+    getBuyerId: () => localStorage.getItem('tm_buyer_id') || '',
+    getBuyerName:()=> localStorage.getItem('tm_buyer_name') || '',
+    getSellerId:() => localStorage.getItem('tm_seller_id') || '',
+    getSellerName:()=>localStorage.getItem('tm_seller_name')|| '',
+    setBuyer: (id, name) => { localStorage.setItem('tm_buyer_id', id); localStorage.setItem('tm_buyer_name', name); },
+    setSeller:(id, name) => { localStorage.setItem('tm_seller_id', id); localStorage.setItem('tm_seller_name', name); },
+
+    setRole(r) {
+      localStorage.setItem('tm_role', r);
+      document.querySelectorAll('.role-btn').forEach(b => b.classList.toggle('active', b.dataset.role === r));
+      document.querySelectorAll('[data-roles]').forEach(el => {
+        const allowed = el.dataset.roles.split(',');
+        el.style.display = allowed.includes(r) ? '' : 'none';
+      });
+      const lbl = document.getElementById('role-label');
+      if (lbl) lbl.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+      // Update nav links that depend on stored IDs
+      TM._updateNavLinks(r);
+      if (typeof onRoleChange === 'function') onRoleChange(r);
+    },
+
+    _updateNavLinks(r) {
+      // Seller "My Store" link — point to stored seller ID
+      const storeLink = document.getElementById('nav-seller-store');
+      if (storeLink) {
+        const sid = TM.getSellerId();
+        storeLink.href = sid ? `/seller/${sid}` : '/seller-setup';
+      }
+      // Buyer name in nav
+      const buyerBadge = document.getElementById('nav-buyer-name');
+      if (buyerBadge) {
+        const name = TM.getBuyerName();
+        buyerBadge.textContent = name ? `👤 ${name}` : '👤 Set Account';
+        buyerBadge.style.display = r === 'buyer' ? '' : 'none';
+      }
+      // Seller name in nav
+      const sellerBadge = document.getElementById('nav-seller-name');
+      if (sellerBadge) {
+        const name = TM.getSellerName();
+        sellerBadge.textContent = name ? `🏪 ${name}` : '🏪 Set Store';
+        sellerBadge.style.display = r === 'seller' ? '' : 'none';
+      }
+    }
+  };
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const r = TM.getRole();
+    document.querySelectorAll('.role-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.role === r);
+      b.onclick = () => TM.setRole(b.dataset.role);
+    });
+    document.querySelectorAll('[data-roles]').forEach(el => {
+      el.style.display = el.dataset.roles.split(',').includes(r) ? '' : 'none';
+    });
+    const lbl = document.getElementById('role-label');
+    if (lbl) lbl.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+    TM._updateNavLinks(r);
+  });
+  </script>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+<!-- ── Top nav ── -->
+<nav class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+  <div class="max-w-7xl mx-auto px-4 py-0 flex items-center justify-between gap-2" style="height:54px">
+
+    <!-- Logo -->
+    <a href="/" class="flex items-center gap-2 font-bold text-lg text-indigo-600 shrink-0">
+      <span class="bg-indigo-600 text-white rounded-lg px-2 py-0.5 text-xs font-black">TM</span>
+      TrustMart
+    </a>
+
+    <!-- Role-based nav links -->
+    <div class="flex items-center gap-0.5 text-sm overflow-x-auto" style="max-width:520px">
+
+      <!-- Always: Marketplace -->
+      <a href="/" class="nav-link px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 whitespace-nowrap text-xs font-medium">
+        🛍 Marketplace
+      </a>
+
+      <!-- Buyer links -->
+      <span data-roles="buyer" style="display:none" class="flex items-center gap-0.5">
+        <a href="/my-complaints" class="nav-link px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 whitespace-nowrap text-xs font-medium">
+          📋 My Complaints
+        </a>
+      </span>
+
+      <!-- Seller links -->
+      <span data-roles="seller" style="display:none" class="flex items-center gap-0.5">
+        <a href="/seller/products" class="nav-link px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 whitespace-nowrap text-xs font-medium">
+          📦 My Products
+        </a>
+        <a id="nav-seller-store" href="/seller-setup" class="nav-link px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 whitespace-nowrap text-xs font-medium">
+          📊 My Dashboard
+        </a>
+      </span>
+
+      <!-- Admin links -->
+      <span data-roles="admin" style="display:none" class="flex items-center gap-0.5">
+        <a href="/admin-complaints" class="nav-link px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 whitespace-nowrap text-xs font-medium">
+          🚩 Complaints
+        </a>
+        <a href="/admin-sellers" class="nav-link px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 whitespace-nowrap text-xs font-medium">
+          👥 Sellers
+        </a>
+        <a href="/manage" class="nav-link px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 whitespace-nowrap text-xs font-medium">
+          ⚙️ Manage
+        </a>
+      </span>
+    </div>
+
+    <!-- Right side: identity badge + role switcher -->
+    <div class="flex items-center gap-2 shrink-0">
+      <!-- Identity pills -->
+      <span id="nav-buyer-name" class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2 py-1 rounded-full cursor-pointer hover:bg-indigo-100 hidden" onclick="window.location='/my-complaints'"></span>
+      <span id="nav-seller-name" class="text-xs bg-purple-50 text-purple-700 font-semibold px-2 py-1 rounded-full cursor-pointer hover:bg-purple-100 hidden" onclick="window.location='/seller/products'"></span>
+
+      <!-- Role switcher -->
+      <div class="flex items-center gap-1 border border-gray-200 rounded-xl px-1 py-1">
+        <button class="role-btn" data-role="buyer" style="font-size:11px;padding:3px 8px">👤</button>
+        <button class="role-btn" data-role="seller" style="font-size:11px;padding:3px 8px">🏪</button>
+        <button class="role-btn" data-role="admin" style="font-size:11px;padding:3px 8px">🛡</button>
+      </div>
+      <span class="text-xs bg-indigo-50 text-indigo-600 font-semibold px-2 py-1 rounded-full" id="role-label">Buyer</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Identity setup modals ── -->
+
+<!-- Buyer identity modal -->
+<div id="buyer-modal" class="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+    <h2 class="font-bold text-lg text-gray-900 mb-1">👤 Your Buyer Account</h2>
+    <p class="text-sm text-gray-500 mb-4">Select an existing account or create a new one.</p>
+    <select id="bm-select" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+      <option value="">Loading accounts…</option>
+    </select>
+    <div class="text-xs text-gray-400 mb-2 text-center">— or create new —</div>
+    <input id="bm-name" type="text" placeholder="Your name (e.g. Alice)" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+    <div class="flex gap-2">
+      <button onclick="createAndSetBuyer()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">Create & Use</button>
+      <button onclick="selectBuyer()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl text-sm transition-colors">Use Selected</button>
+    </div>
+    <div id="bm-msg" class="mt-2 text-xs text-red-500 hidden"></div>
+  </div>
+</div>
+
+<!-- Seller identity modal -->
+<div id="seller-modal" class="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
+    <h2 class="font-bold text-lg text-gray-900 mb-1">🏪 Your Seller Account</h2>
+    <p class="text-sm text-gray-500 mb-4">Select your store to manage it.</p>
+    <select id="sm-select" class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+      <option value="">Loading stores…</option>
+    </select>
+    <button onclick="selectSeller()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">Use This Store</button>
+    <div id="sm-msg" class="mt-2 text-xs text-red-500 hidden"></div>
+  </div>
+</div>
+
+<main class="max-w-7xl mx-auto px-4 py-6">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="border-t border-gray-200 mt-12 py-5 text-center text-xs text-gray-400">
+  TrustMart · AI-Assisted Fraud &amp; Trust Detection · v3.0
+</footer>
+
+{% block scripts %}{% endblock %}
+
+<!-- ── Identity modal JS (shared across all pages) ── -->
+<script>
+function showBuyerModal() {
+  fetch('/buyers/all?limit=200').then(r=>r.json()).then(buyers => {
+    const sel = document.getElementById('bm-select');
+    sel.innerHTML = '<option value="">Select existing account…</option>' +
+      buyers.map(b => `<option value="${b.id}|${b.name}">${b.name} (cred: ${b.credibility_score})</option>`).join('');
+  });
+  document.getElementById('buyer-modal').classList.remove('hidden');
+}
+function hideBuyerModal() { document.getElementById('buyer-modal').classList.add('hidden'); }
+
+function showSellerModal() {
+  fetch('/sellers/all?limit=200').then(r=>r.json()).then(sellers => {
+    const sel = document.getElementById('sm-select');
+    sel.innerHTML = '<option value="">Select your store…</option>' +
+      sellers.map(s => `<option value="${s.id}|${s.name}">${s.name} (Trust: ${s.trust_score})</option>`).join('');
+  });
+  document.getElementById('seller-modal').classList.remove('hidden');
+}
+function hideSellerModal() { document.getElementById('seller-modal').classList.add('hidden'); }
+
+async function createAndSetBuyer() {
+  const name = document.getElementById('bm-name').value.trim();
+  if (!name) { document.getElementById('bm-msg').textContent='Enter a name'; document.getElementById('bm-msg').classList.remove('hidden'); return; }
+  const r = await fetch('/buyers/add', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name})});
+  const b = await r.json();
+  TM.setBuyer(b.id, b.name);
+  TM._updateNavLinks(TM.getRole());
+  hideBuyerModal();
+  if (typeof onBuyerSet === 'function') onBuyerSet(b.id, b.name);
+}
+function selectBuyer() {
+  const val = document.getElementById('bm-select').value;
+  if (!val) { document.getElementById('bm-msg').textContent='Select an account first'; document.getElementById('bm-msg').classList.remove('hidden'); return; }
+  const [id, name] = val.split('|');
+  TM.setBuyer(id, name);
+  TM._updateNavLinks(TM.getRole());
+  hideBuyerModal();
+  if (typeof onBuyerSet === 'function') onBuyerSet(id, name);
+}
+function selectSeller() {
+  const val = document.getElementById('sm-select').value;
+  if (!val) { document.getElementById('sm-msg').textContent='Select a store first'; document.getElementById('sm-msg').classList.remove('hidden'); return; }
+  const [id, name] = val.split('|');
+  TM.setSeller(id, name);
+  TM._updateNavLinks(TM.getRole());
+  hideSellerModal();
+  if (typeof onSellerSet === 'function') onSellerSet(id, name);
+  // Redirect to seller dashboard
+  window.location.href = `/seller/${id}`;
+}
+// Close modals on backdrop click
+document.getElementById('buyer-modal').addEventListener('click', function(e){ if(e.target===this) hideBuyerModal(); });
+document.getElementById('seller-modal').addEventListener('click', function(e){ if(e.target===this) hideSellerModal(); });
+</script>
+</body>
+</html>

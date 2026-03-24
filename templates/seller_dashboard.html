@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% block title %}Seller Trust Dashboard — TrustMart{% endblock %}
+
+{% block content %}
+<div class="mb-4 flex items-center gap-2 text-sm">
+  <a href="/" class="text-indigo-600 hover:underline">Marketplace</a>
+  <span class="text-gray-400">/</span>
+  <span class="text-gray-500">Seller Trust Dashboard</span>
+</div>
+
+<!-- Loading -->
+<div id="loading" class="flex items-center justify-center py-20">
+  <div class="text-center">
+    <div class="spinner mx-auto mb-3" style="width:40px;height:40px;border-width:4px"></div>
+    <p class="text-gray-400 text-sm">Loading trust analysis…</p>
+  </div>
+</div>
+
+<!-- Main content -->
+<div id="page-content" class="hidden fade-in space-y-6">
+
+  <!-- ── Top: Seller header + score ── -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+
+      <!-- Seller identity -->
+      <div class="flex items-center gap-4">
+        <div id="seller-avatar" class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-2xl font-black text-indigo-600"></div>
+        <div>
+          <h1 id="seller-name" class="text-2xl font-black text-gray-900"></h1>
+          <p id="seller-meta" class="text-sm text-gray-400 mt-0.5"></p>
+          <div id="risk-badge" class="badge mt-2 text-sm font-bold"></div>
+        </div>
+      </div>
+
+      <!-- Trust score ring + bar -->
+      <div class="flex flex-col items-center sm:items-end gap-3">
+        <div id="trust-ring" class="trust-ring" style="width:110px;height:110px;font-size:2rem">—</div>
+        <div class="w-48">
+          <div class="flex justify-between text-xs text-gray-400 mb-1">
+            <span>Trust Score</span><span id="score-label" class="font-semibold"></span>
+          </div>
+          <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div id="trust-bar" class="progress-bar h-full rounded-full" style="width:0%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-gray-300 mt-1"><span>0</span><span>40</span><span>70</span><span>100</span></div>
+        </div>
+        <div id="ai-model" class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-lg"></div>
+      </div>
+    </div>
+
+    <!-- Recommendation banner -->
+    <div id="recommendation" class="mt-5 rounded-xl py-3 px-5 text-sm font-medium text-center"></div>
+  </div>
+
+  <!-- ── Risk warning ── -->
+  <div id="risk-warning" class="hidden warning-banner">
+    <span class="text-2xl shrink-0">🚨</span>
+    <div>
+      <p class="font-bold text-red-700">High Risk Seller</p>
+      <p class="text-sm text-red-600 mt-0.5">This seller has been flagged by our AI-assisted trust system. Exercise extreme caution.</p>
+    </div>
+  </div>
+
+  <!-- ── Signals section ── -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <h2 class="font-bold text-gray-800 text-lg mb-1 flex items-center gap-2">
+      <span class="text-indigo-500">📡</span> Trust Signals
+      <span class="text-xs font-normal text-gray-400 ml-2">(feature vector powering the trust score)</span>
+    </h2>
+    <p class="text-xs text-gray-400 mb-4">Each signal is normalised 0→1 and weighted to produce the final risk score.</p>
+    <div id="signals-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+
+    <!-- Weighted risk meter -->
+    <div class="mt-5 pt-4 border-t border-gray-100">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-semibold text-gray-600">Weighted Risk Score</span>
+        <span id="weighted-risk-label" class="text-sm font-bold"></span>
+      </div>
+      <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+        <div id="weighted-risk-bar" class="progress-bar h-full rounded-full bg-indigo-500" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between text-xs text-gray-300 mt-1"><span>0 (no risk)</span><span>1.0 (max risk)</span></div>
+    </div>
+  </div>
+
+  <!-- ── Reasons + Actions (side by side) ── -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+    <!-- Reasons -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <h2 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <span class="text-amber-500">⚠</span> Risk Reasons
+      </h2>
+      <ul id="reasons-list" class="space-y-3"></ul>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <h2 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <span class="text-indigo-500">⚡</span> Actions
+      </h2>
+      <div class="space-y-2">
+        <div data-roles="buyer">
+          <a id="report-link" href="#" class="flex items-center gap-3 p-3 border border-red-200 hover:bg-red-50 rounded-xl text-sm font-semibold text-red-600 transition-colors">
+            <span class="text-xl">🚩</span>
+            <div>
+              <div>Report a Product Issue</div>
+              <div class="text-xs font-normal text-red-400">File a complaint about a product</div>
+            </div>
+          </a>
+        </div>
+        <a id="products-link" href="#" class="flex items-center gap-3 p-3 border border-gray-200 hover:bg-gray-50 rounded-xl text-sm font-semibold text-gray-700 transition-colors">
+          <span class="text-xl">📦</span>
+          <div>
+            <div>Browse Products</div>
+            <div class="text-xs font-normal text-gray-400">View all products by this seller</div>
+          </div>
+        </a>
+        <div data-roles="admin">
+          <a id="admin-signals-link" href="#" class="flex items-center gap-3 p-3 border border-indigo-200 hover:bg-indigo-50 rounded-xl text-sm font-semibold text-indigo-600 transition-colors">
+            <span class="text-xl">🔬</span>
+            <div>
+              <div>Debug Signals</div>
+              <div class="text-xs font-normal text-indigo-400">View raw feature vector in admin panel</div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Complaints ── -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <h2 class="font-bold text-gray-800 text-lg mb-4 flex items-center justify-between">
+      <span class="flex items-center gap-2"><span class="text-red-400">📋</span> Active Complaints</span>
+      <span id="complaints-count" class="text-sm font-normal text-gray-400"></span>
+    </h2>
+    <div id="complaints-list"></div>
+  </div>
+
+</div><!-- /page-content -->
+
+<div id="error-state" class="hidden text-center py-20">
+  <div class="text-5xl mb-3">🔍</div>
+  <p class="text-gray-500 font-medium">Seller not found</p>
+  <a href="/" class="text-indigo-600 text-sm hover:underline mt-2 inline-block">← Back</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SELLER_ID = {{ seller_id }};
+
+function scoreClass(s)  { return s>=70?'safe':s>=40?'caution':'risk'; }
+function riskColor(r)   { return r==='Safe'?'bg-green-100 text-green-700':r==='Caution'?'bg-yellow-100 text-yellow-700':'bg-red-100 text-red-700'; }
+function barColor(r)    { return r==='Safe'?'bg-green-500':r==='Caution'?'bg-yellow-500':'bg-red-500'; }
+function escHtml(s)     { return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function severityColor(v){ return v>=4?'text-red-600':v>=3?'text-orange-500':v>=2?'text-yellow-600':'text-green-600'; }
+
+function severityBar(val) {
+  const pct = (val/5)*100;
+  const col = val>=4?'bg-red-500':val>=3?'bg-orange-400':val>=2?'bg-yellow-400':'bg-green-400';
+  return `<div class="h-1.5 w-full bg-gray-100 rounded-full mt-1"><div class="h-full rounded-full ${col}" style="width:${pct}%"></div></div>`;
+}
+
+async function load() {
+  try {
+    const [adv, complaints] = await Promise.all([
+      fetch(`/advisory/seller/${SELLER_ID}`).then(r=>{ if(!r.ok) throw r; return r.json(); }),
+      fetch(`/complaints/seller/${SELLER_ID}?status=open`).then(r=>r.json()).catch(()=>[]),
+    ]);
+
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('page-content').classList.remove('hidden');
+
+    const score = adv.trust_score;
+    const risk  = adv.risk_level;
+
+    // Header
+    document.getElementById('seller-avatar').textContent = (adv.seller_name||'?')[0].toUpperCase();
+    document.getElementById('seller-name').textContent   = adv.seller_name;
+    document.getElementById('seller-meta').textContent   = `Seller ID: ${SELLER_ID} · Account age: ${adv.account_age_days} days`;
+
+    const badge = document.getElementById('risk-badge');
+    badge.textContent = risk;
+    badge.className   = `badge text-sm font-bold ${riskColor(risk)}`;
+
+    const ring = document.getElementById('trust-ring');
+    ring.textContent = score;
+    ring.className   = `trust-ring ${scoreClass(score)}`;
+    ring.style.cssText = 'width:110px;height:110px;font-size:2rem';
+
+    document.getElementById('score-label').textContent = `${score}/100`;
+    const bar = document.getElementById('trust-bar');
+    bar.className = `progress-bar h-full rounded-full ${barColor(risk)}`;
+    setTimeout(() => bar.style.width = `${score}%`, 100);
+
+    document.getElementById('ai-model').textContent = `AI: ${adv.ai_model_used||'resnet'}`;
+
+    const rec = document.getElementById('recommendation');
+    rec.textContent = adv.recommendation;
+    rec.className   = `mt-5 rounded-xl py-3 px-5 text-sm font-medium text-center ${risk==='Safe'?'bg-green-50 text-green-700':risk==='Caution'?'bg-yellow-50 text-yellow-700':'bg-red-50 text-red-700'}`;
+
+    if (risk === 'High Risk') document.getElementById('risk-warning').classList.remove('hidden');
+
+    // Signals
+    const s = adv.signals;
+    const signalDefs = [
+      {icon:'📋', label:'Open Complaints',     value: s.open_complaints,                     raw: Math.min(1,s.open_complaints/10)},
+      {icon:'⭐', label:'Avg Severity',          value: s.avg_severity.toFixed(2)+' / 5',      raw: s.avg_severity/5},
+      {icon:'🤖', label:'Mean Visual Mismatch', value: (s.mean_visual_mismatch*100).toFixed(1)+'%', raw: s.mean_visual_mismatch},
+      {icon:'👤', label:'Cred-Weighted Sev',    value: s.buyer_credibility_weighted_sev.toFixed(2), raw: s.buyer_credibility_weighted_sev/5},
+      {icon:'💰', label:'Price Anomaly Ratio',  value: (s.price_anomaly_ratio*100).toFixed(0)+'%', raw: s.price_anomaly_ratio},
+      {icon:'⚡', label:'Complaint Frequency',  value: s.complaint_frequency.toFixed(3)+'/mo', raw: Math.min(1,s.complaint_frequency/10)},
+      {icon:'📅', label:'Account Age Penalty',  value: s.account_age_penalty>0?`${(s.account_age_penalty*100).toFixed(0)}% penalty`:'None', raw: s.account_age_penalty},
+      {icon:'🗂', label:'Total Complaints',      value: s.total_complaints,                    raw: Math.min(1,s.total_complaints/20)},
+    ];
+    const barColors = ['bg-red-400','bg-orange-400','bg-yellow-400','bg-green-400'];
+    document.getElementById('signals-grid').innerHTML = signalDefs.map(it => {
+      const pct = Math.round(it.raw*100);
+      const bc = pct>75?'bg-red-400':pct>50?'bg-orange-400':pct>25?'bg-yellow-400':'bg-green-400';
+      return `
+      <div class="signal-card">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-lg">${it.icon}</span>
+          <span class="text-xs font-bold text-gray-400">${pct}%</span>
+        </div>
+        <div class="text-xs text-gray-500 font-medium leading-tight">${it.label}</div>
+        <div class="text-sm font-bold text-gray-800 mt-1">${it.value}</div>
+        <div class="h-1.5 bg-gray-100 rounded-full mt-2 overflow-hidden">
+          <div class="${bc} h-full rounded-full progress-bar" style="width:0%" data-target="${pct}%"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Animate signal bars
+    setTimeout(() => {
+      document.querySelectorAll('[data-target]').forEach(el => {
+        el.style.width = el.dataset.target;
+      });
+    }, 150);
+
+    // Weighted risk bar
+    const wr = s.weighted_risk;
+    document.getElementById('weighted-risk-label').textContent = `${(wr*100).toFixed(1)}%`;
+    const wrBar = document.getElementById('weighted-risk-bar');
+    const wrColor = wr>0.6?'bg-red-500':wr>0.3?'bg-yellow-500':'bg-green-500';
+    wrBar.className = `progress-bar h-full rounded-full ${wrColor}`;
+    setTimeout(()=>wrBar.style.width=`${wr*100}%`, 200);
+
+    // Reasons
+    const reasons = adv.reasons||[];
+    document.getElementById('reasons-list').innerHTML = reasons.length
+      ? reasons.map((r,i) => `
+        <li class="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl fade-in" style="animation-delay:${i*60}ms">
+          <span class="text-amber-500 text-lg shrink-0">⚠</span>
+          <span class="text-sm text-gray-700">${escHtml(r)}</span>
+        </li>`).join('')
+      : `<li class="flex items-center gap-2 text-green-600 text-sm p-3 bg-green-50 rounded-xl">
+          <span>✓</span> No risk factors detected for this seller
+        </li>`;
+
+    // Links
+    document.getElementById('report-link').href = `/complaint/new?seller_id=${SELLER_ID}`;
+    document.getElementById('products-link').href = `/`;
+    document.getElementById('admin-signals-link').href = `/admin-panel`;
+
+    // Complaints
+    document.getElementById('complaints-count').textContent = `${complaints.length} open`;
+    renderComplaints(complaints);
+
+  } catch(e) {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('error-state').classList.remove('hidden');
+  }
+}
+
+function mismatchBar(score) {
+  const pct = Math.round(score*100);
+  const col = pct>75?'bg-red-500':pct>50?'bg-orange-400':pct>25?'bg-yellow-400':'bg-green-400';
+  return `
+    <div class="flex items-center gap-2">
+      <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div class="${col} mismatch-fill" style="width:${pct}%"></div>
+      </div>
+      <span class="text-xs font-semibold ${pct>60?'text-red-600':'text-gray-500'}">${pct}%</span>
+    </div>`;
+}
+
+function renderComplaints(complaints) {
+  const el = document.getElementById('complaints-list');
+  if (!complaints.length) {
+    el.innerHTML = `<div class="text-center py-8 text-gray-400 text-sm">
+      <span class="text-2xl block mb-2">✅</span>No open complaints
+    </div>`;
+    return;
+  }
+  el.innerHTML = complaints.map(c => `
+    <div class="border border-gray-100 rounded-xl p-4 mb-3 hover:border-indigo-200 transition-colors">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex-1 min-w-0">
+          <p class="text-sm text-gray-700 font-medium leading-snug">${escHtml(c.complaint_text)}</p>
+          <div class="flex flex-wrap items-center gap-2 mt-2">
+            <span class="badge badge-open">open</span>
+            <span class="badge badge-${c.processing_status}">${c.processing_status}</span>
+            <span class="text-xs text-gray-400">Severity: <strong class="${severityColor(c.severity_level)}">${c.severity_level}/5</strong></span>
+            <a href="/complaint/${c.id}" class="text-xs text-indigo-500 hover:underline">Track #${c.id}</a>
+          </div>
+        </div>
+        <div class="text-right shrink-0 min-w-[100px]">
+          <div class="text-xs text-gray-400 mb-1">Visual Mismatch</div>
+          ${mismatchBar(c.visual_mismatch_score||0)}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+load();
+</script>
+{% endblock %}

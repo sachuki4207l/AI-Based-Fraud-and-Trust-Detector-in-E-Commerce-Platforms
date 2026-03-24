@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Product — TrustMart{% endblock %}
+
+{% block content %}
+<div class="mb-4"><a href="/" class="text-sm text-indigo-600 hover:underline">← Marketplace</a></div>
+
+<div id="loading" class="flex justify-center py-20">
+  <div class="spinner" style="width:36px;height:36px;border-width:4px"></div>
+</div>
+
+<div id="page-content" class="hidden fade-in">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left: product info -->
+    <div class="lg:col-span-2 space-y-5">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div id="product-img-wrap" class="w-full h-64 bg-gray-50 flex items-center justify-center overflow-hidden">
+          <span class="text-7xl">📦</span>
+        </div>
+        <div class="p-6">
+          <div class="flex items-start justify-between gap-4">
+            <h1 id="product-title" class="text-2xl font-bold text-gray-900 leading-tight"></h1>
+            <div class="text-right shrink-0">
+              <div id="product-price" class="text-3xl font-black text-gray-900"></div>
+              <div id="product-market" class="text-sm text-gray-400 line-through mt-0.5"></div>
+              <div id="price-diff" class="text-xs font-semibold mt-1"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- High risk warning -->
+      <div id="risk-warning" class="hidden bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+        <span class="text-2xl shrink-0">🚨</span>
+        <div>
+          <p class="font-bold text-red-700">High Risk Seller Warning</p>
+          <p id="risk-warning-text" class="text-sm text-red-600 mt-0.5"></p>
+        </div>
+      </div>
+
+      <!-- Trust signals -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h2 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><span class="text-indigo-500">📊</span> Trust Signals</h2>
+        <div id="signals-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+      </div>
+    </div>
+
+    <!-- Right: seller card + actions -->
+    <div class="space-y-4">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Seller</div>
+        <div class="flex items-center gap-3 mb-4">
+          <div id="seller-avatar" class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-xl font-bold text-indigo-600"></div>
+          <div>
+            <div id="seller-name" class="font-bold text-gray-900"></div>
+            <div id="seller-age" class="text-xs text-gray-400 mt-0.5"></div>
+          </div>
+        </div>
+        <div class="flex flex-col items-center py-4 border-t border-b border-gray-100 my-3">
+          <div id="trust-ring" class="trust-ring mb-2">—</div>
+          <div id="risk-badge" class="badge text-sm font-bold mt-1"></div>
+        </div>
+        <div id="trust-bar-wrap" class="mt-3">
+          <div class="flex justify-between text-xs text-gray-400 mb-1"><span>Trust Score</span><span id="score-label"></span></div>
+          <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div id="trust-bar" class="progress-bar h-full rounded-full" style="width:0%"></div>
+          </div>
+        </div>
+        <div id="recommendation" class="mt-3 text-sm font-medium text-center py-2 px-3 rounded-xl bg-gray-50"></div>
+
+        <!-- Role-based action buttons -->
+        <div class="mt-4 space-y-2">
+          <!-- Buyer: Report Issue -->
+          <div data-roles="buyer">
+            <button id="report-btn" onclick="handleReportIssue()"
+              class="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
+              🚩 Report Issue
+            </button>
+          </div>
+          <!-- Seller / Admin: Seller Dashboard -->
+          <div data-roles="seller,admin">
+            <a id="dashboard-link" href="#"
+              class="w-full flex items-center justify-center gap-2 border border-indigo-200 hover:bg-indigo-50 text-indigo-600 font-semibold py-2.5 rounded-xl text-sm transition-colors">
+              📊 Seller Dashboard
+            </a>
+          </div>
+          <!-- Admin: Debug Signals -->
+          <div data-roles="admin">
+            <a id="signals-link" href="#"
+              class="w-full flex items-center justify-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold py-2.5 rounded-xl text-sm transition-colors">
+              🔬 Debug Signals
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reasons -->
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h2 class="font-bold text-gray-700 text-sm mb-3">Why this rating?</h2>
+        <ul id="reasons-list" class="space-y-2 text-sm text-gray-600"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="error-state" class="hidden text-center py-20">
+  <div class="text-5xl mb-3">😞</div>
+  <p class="text-gray-500">Product not found</p>
+  <a href="/" class="text-indigo-600 text-sm hover:underline mt-2 inline-block">← Back</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PRODUCT_ID = {{ product_id }};
+let _productData = null, _sellerId = null;
+
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function scoreClass(s){ return s>=70?'safe':s>=40?'caution':'risk'; }
+function riskBadgeCls(r){ return r==='Safe'?'bg-green-100 text-green-700':r==='Caution'?'bg-yellow-100 text-yellow-700':'bg-red-100 text-red-700'; }
+function barColor(r){ return r==='Safe'?'bg-green-500':r==='Caution'?'bg-yellow-500':'bg-red-500'; }
+
+async function load() {
+  try {
+    const [product, adv] = await Promise.all([
+      fetch(`/products/${PRODUCT_ID}`).then(r=>{ if(!r.ok) throw r; return r.json(); }),
+      fetch(`/products/${PRODUCT_ID}`).then(r=>r.json()).then(p => fetch(`/advisory/seller/${p.seller_id}`).then(r=>r.json())),
+    ]);
+    _productData = product;
+    _sellerId = product.seller_id;
+
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('page-content').classList.remove('hidden');
+
+    if (product.image_path) {
+      document.getElementById('product-img-wrap').innerHTML = `<img src="/${product.image_path}" class="w-full h-full object-cover">`;
+    }
+    document.getElementById('product-title').textContent = product.title;
+    document.getElementById('product-price').textContent = `$${product.price.toFixed(2)}`;
+    document.getElementById('product-market').textContent = `Market: $${product.market_price.toFixed(2)}`;
+    const pct = Math.round(((product.market_price - product.price) / product.market_price) * 100);
+    if (pct > 0) {
+      const el = document.getElementById('price-diff');
+      el.textContent = `${pct}% below market price`;
+      el.className = `text-xs font-semibold mt-1 ${pct>40?'text-orange-600':'text-green-600'}`;
+    }
+
+    const score = adv.trust_score, risk = adv.risk_level;
+    document.getElementById('seller-avatar').textContent = (adv.seller_name||'?')[0].toUpperCase();
+    document.getElementById('seller-name').textContent   = adv.seller_name;
+    document.getElementById('seller-age').textContent    = `${adv.account_age_days} days active`;
+
+    const ring = document.getElementById('trust-ring');
+    ring.textContent = score; ring.className = `trust-ring ${scoreClass(score)}`;
+
+    const badge = document.getElementById('risk-badge');
+    badge.textContent = risk; badge.className = `badge text-sm font-bold ${riskBadgeCls(risk)}`;
+
+    document.getElementById('score-label').textContent = `${score}/100`;
+    const bar = document.getElementById('trust-bar');
+    bar.className = `progress-bar h-full rounded-full ${barColor(risk)}`;
+    setTimeout(()=> bar.style.width = `${score}%`, 100);
+
+    const rec = document.getElementById('recommendation');
+    rec.textContent = adv.recommendation;
+    rec.className = `mt-3 text-sm font-medium text-center py-2 px-3 rounded-xl ${risk==='Safe'?'bg-green-50 text-green-700':risk==='Caution'?'bg-yellow-50 text-yellow-700':'bg-red-50 text-red-700'}`;
+
+    if (risk === 'High Risk') {
+      document.getElementById('risk-warning').classList.remove('hidden');
+      document.getElementById('risk-warning-text').textContent = adv.recommendation;
+    }
+
+    document.getElementById('reasons-list').innerHTML = (adv.reasons||[]).length
+      ? adv.reasons.map(r=>`<li class="flex items-start gap-2"><span class="text-amber-500 shrink-0 mt-0.5">⚠</span><span>${esc(r)}</span></li>`).join('')
+      : `<li class="text-gray-400">No risk factors detected</li>`;
+
+    // Links
+    document.getElementById('dashboard-link').href = `/seller/${_sellerId}`;
+    document.getElementById('signals-link').href   = `/admin/signals/${_sellerId}`;
+
+    // Signals
+    const s = adv.signals;
+    const items = [
+      {icon:'📋',label:'Open Complaints',    val: s.open_complaints},
+      {icon:'⭐',label:'Avg Severity',        val: `${s.avg_severity.toFixed(1)}/5`},
+      {icon:'🤖',label:'Visual Mismatch',     val: `${(s.mean_visual_mismatch*100).toFixed(0)}%`},
+      {icon:'⚡',label:'Complaint Freq',      val: `${s.complaint_frequency.toFixed(2)}/mo`},
+      {icon:'💰',label:'Price Anomaly',        val: s.has_price_anomaly ? '⚠ Detected' : '✓ Normal'},
+      {icon:'📅',label:'Account Age',          val: `${s.account_age_days} days`},
+    ];
+    document.getElementById('signals-grid').innerHTML = items.map(it=>`
+      <div class="signal-card">
+        <div class="text-lg mb-1">${it.icon}</div>
+        <div class="text-xs text-gray-500 font-medium">${it.label}</div>
+        <div class="text-sm font-bold text-gray-800 mt-0.5">${it.val}</div>
+      </div>`).join('');
+
+  } catch {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('error-state').classList.remove('hidden');
+  }
+}
+
+function handleReportIssue() {
+  const buyerId = TM.getBuyerId();
+  if (!buyerId) {
+    // No buyer identity — show modal first
+    window._pendingReportRedirect = true;
+    showBuyerModal();
+    return;
+  }
+  // Navigate to complaint form with product + seller IDs embedded in URL
+  window.location.href = `/complaint/new?product_id=${PRODUCT_ID}&seller_id=${_sellerId}`;
+}
+
+// Called when buyer identity is set from modal
+function onBuyerSet() {
+  if (window._pendingReportRedirect && _productData) {
+    window._pendingReportRedirect = false;
+    window.location.href = `/complaint/new?product_id=${PRODUCT_ID}&seller_id=${_sellerId}`;
+  }
+}
+
+load();
+</script>
+{% endblock %}

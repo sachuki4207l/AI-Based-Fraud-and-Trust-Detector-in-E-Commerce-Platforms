@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+{% block title %}My Products — TrustMart{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">📦 My Products</h1>
+    <p class="text-sm text-gray-500 mt-0.5" id="store-subtitle">Manage your product listings</p>
+  </div>
+  <a id="dashboard-link" href="#" class="text-sm text-indigo-600 hover:underline">📊 View Dashboard</a>
+</div>
+
+<!-- No seller identity guard -->
+<div id="no-identity" class="hidden bg-purple-50 border border-purple-200 rounded-2xl p-6 text-center">
+  <div class="text-3xl mb-2">🏪</div>
+  <h2 class="font-bold text-purple-800 mb-1">Select your store first</h2>
+  <p class="text-sm text-purple-700 mb-4">Choose which seller account you want to manage.</p>
+  <button onclick="showSellerModal()"
+    class="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+    Select Store
+  </button>
+</div>
+
+<!-- Main content -->
+<div id="main-content" class="hidden">
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+    <!-- ── Left: Add / Edit form panel ── -->
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-20">
+
+        <!-- Panel header — toggles between Add and Edit mode -->
+        <div class="flex items-center justify-between mb-4">
+          <h2 id="form-title" class="font-bold text-gray-800 flex items-center gap-2">
+            <span id="form-icon" class="text-green-500 text-lg">+</span>
+            <span id="form-heading">Add New Product</span>
+          </h2>
+          <!-- Cancel edit — only shown in edit mode -->
+          <button id="cancel-edit-btn" onclick="switchToAddMode()"
+            class="hidden text-xs text-gray-400 hover:text-gray-600 font-semibold border border-gray-200 rounded-lg px-2.5 py-1 transition-colors">
+            ✕ Cancel
+          </button>
+        </div>
+
+        <!-- Editing-product indicator -->
+        <div id="editing-indicator" class="hidden bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2 mb-3 flex items-center gap-2">
+          <div id="edit-product-thumb" class="w-8 h-8 rounded-lg overflow-hidden bg-indigo-100 shrink-0 flex items-center justify-center text-sm">📦</div>
+          <div class="min-w-0">
+            <div class="text-xs text-indigo-500 font-medium">Editing</div>
+            <div id="edit-product-name" class="text-xs font-semibold text-indigo-800 truncate"></div>
+          </div>
+        </div>
+
+        <!-- Shared form fields (used by both add and edit) -->
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">Title <span class="text-red-400">*</span></label>
+            <input id="f-title" type="text" placeholder="e.g. iPhone 14 Pro 256GB"
+              class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 mb-1">Your Price ($) <span class="text-red-400">*</span></label>
+              <input id="f-price" type="number" step="0.01" placeholder="899.99"
+                class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 mb-1">Market Price ($) <span class="text-red-400">*</span></label>
+              <input id="f-market" type="number" step="0.01" placeholder="1099.99"
+                class="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <p class="text-xs text-gray-400 mt-0.5">Below 60% flags as suspicious</p>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">
+              Product Image
+              <span id="img-label-hint" class="font-normal text-gray-400">(optional)</span>
+            </label>
+            <div id="img-drop" onclick="document.getElementById('f-image').click()"
+              class="border-2 border-dashed border-gray-200 hover:border-indigo-300 rounded-xl p-4 text-center cursor-pointer transition-colors">
+              <input type="file" id="f-image" accept="image/*" class="hidden" onchange="previewFormImg(this)">
+              <div id="f-img-ph">
+                <div class="text-2xl mb-1">🖼</div>
+                <p class="text-xs text-gray-400">Click to upload</p>
+              </div>
+              <img id="f-img-prev" class="hidden mx-auto max-h-28 rounded-xl object-cover">
+              <button id="f-img-remove" onclick="removeFormImg(event)"
+                class="hidden mt-1.5 text-xs text-red-400 hover:underline">Remove</button>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">AI compares this to buyer evidence photos</p>
+          </div>
+        </div>
+
+        <!-- Submit button — label changes with mode -->
+        <button id="form-submit-btn" onclick="submitForm()"
+          class="mt-4 w-full font-semibold py-2.5 rounded-xl text-sm transition-colors
+                 bg-indigo-600 hover:bg-indigo-700 text-white">
+          Add Product
+        </button>
+
+        <div id="form-msg" class="mt-2 text-xs hidden"></div>
+      </div>
+    </div>
+
+    <!-- ── Right: Products list ── -->
+    <div class="lg:col-span-3">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-bold text-gray-800">
+            Your Products <span id="p-count" class="text-gray-400 font-normal text-sm"></span>
+          </h2>
+          <button onclick="loadMyProducts()" class="text-xs text-indigo-600 hover:underline">↻ Refresh</button>
+        </div>
+
+        <div id="loading" class="flex justify-center py-8">
+          <div class="spinner" style="width:24px;height:24px;border-width:2.5px"></div>
+        </div>
+        <div id="products-list" class="space-y-3"></div>
+        <div id="empty" class="hidden text-center py-10">
+          <div class="text-3xl mb-2">📦</div>
+          <p class="text-gray-400 text-sm">No products yet. Add your first one!</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ── Mode state ────────────────────────────────────────────────────────────────
+let editingProductId = null;   // null = add mode, number = edit mode
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  const sid = TM.getSellerId(), sname = TM.getSellerName();
+  if (!sid) {
+    document.getElementById('no-identity').classList.remove('hidden');
+    document.getElementById('main-content').classList.add('hidden');
+    return;
+  }
+  document.getElementById('no-identity').classList.add('hidden');
+  document.getElementById('main-content').classList.remove('hidden');
+  document.getElementById('store-subtitle').textContent = `Store: ${sname}`;
+  document.getElementById('dashboard-link').href = `/seller/${sid}`;
+  loadMyProducts();
+}
+
+function onSellerSet(id, name) {
+  document.getElementById('store-subtitle').textContent = `Store: ${name}`;
+  document.getElementById('dashboard-link').href = `/seller/${id}`;
+  document.getElementById('no-identity').classList.add('hidden');
+  document.getElementById('main-content').classList.remove('hidden');
+  loadMyProducts();
+}
+
+// ── Form mode switching ───────────────────────────────────────────────────────
+function switchToAddMode() {
+  editingProductId = null;
+
+  document.getElementById('form-icon').textContent    = '+';
+  document.getElementById('form-icon').className      = 'text-green-500 text-lg';
+  document.getElementById('form-heading').textContent = 'Add New Product';
+  document.getElementById('form-submit-btn').textContent = 'Add Product';
+  document.getElementById('form-submit-btn').className =
+    'mt-4 w-full font-semibold py-2.5 rounded-xl text-sm transition-colors bg-indigo-600 hover:bg-indigo-700 text-white';
+  document.getElementById('cancel-edit-btn').classList.add('hidden');
+  document.getElementById('editing-indicator').classList.add('hidden');
+  document.getElementById('img-label-hint').textContent = '(optional)';
+
+  // Clear form
+  document.getElementById('f-title').value  = '';
+  document.getElementById('f-price').value  = '';
+  document.getElementById('f-market').value = '';
+  document.getElementById('f-image').value  = '';
+  document.getElementById('f-img-prev').classList.add('hidden');
+  document.getElementById('f-img-ph').classList.remove('hidden');
+  document.getElementById('f-img-remove').classList.add('hidden');
+
+  // Remove highlight from all product cards
+  document.querySelectorAll('.prod-card').forEach(el => el.classList.remove('ring-2','ring-indigo-400'));
+}
+
+function switchToEditMode(product) {
+  editingProductId = product.id;
+
+  document.getElementById('form-icon').textContent    = '✏';
+  document.getElementById('form-icon').className      = 'text-blue-500 text-lg';
+  document.getElementById('form-heading').textContent = 'Edit Product';
+  document.getElementById('form-submit-btn').textContent = 'Save Changes';
+  document.getElementById('form-submit-btn').className =
+    'mt-4 w-full font-semibold py-2.5 rounded-xl text-sm transition-colors bg-blue-600 hover:bg-blue-700 text-white';
+  document.getElementById('cancel-edit-btn').classList.remove('hidden');
+  document.getElementById('editing-indicator').classList.remove('hidden');
+  document.getElementById('img-label-hint').textContent = '(replace optional)';
+
+  // Fill form with current values
+  document.getElementById('f-title').value  = product.title;
+  document.getElementById('f-price').value  = product.price;
+  document.getElementById('f-market').value = product.market_price;
+  document.getElementById('f-image').value  = '';
+
+  // Show current image in the upload zone
+  const prev = document.getElementById('f-img-prev');
+  const ph   = document.getElementById('f-img-ph');
+  const rem  = document.getElementById('f-img-remove');
+  if (product.image_path) {
+    prev.src = `/${product.image_path}`;
+    prev.classList.remove('hidden');
+    ph.classList.add('hidden');
+    rem.classList.remove('hidden');
+  } else {
+    prev.classList.add('hidden');
+    ph.classList.remove('hidden');
+    rem.classList.add('hidden');
+  }
+
+  // Show editing indicator
+  const thumb = document.getElementById('edit-product-thumb');
+  if (product.image_path) {
+    thumb.innerHTML = `<img src="/${product.image_path}" class="w-full h-full object-cover" onerror="this.parentElement.textContent='📦'">`;
+  } else {
+    thumb.textContent = '📦';
+  }
+  document.getElementById('edit-product-name').textContent = product.title;
+
+  // Highlight the card being edited
+  document.querySelectorAll('.prod-card').forEach(el => el.classList.remove('ring-2','ring-indigo-400'));
+  const card = document.getElementById(`prod-${product.id}`);
+  if (card) card.classList.add('ring-2','ring-indigo-400');
+
+  // Scroll left panel into view
+  document.getElementById('form-title').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// ── Image preview ─────────────────────────────────────────────────────────────
+function previewFormImg(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById('f-img-prev');
+    prev.src = e.target.result;
+    prev.classList.remove('hidden');
+    document.getElementById('f-img-ph').classList.add('hidden');
+    document.getElementById('f-img-remove').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeFormImg(e) {
+  e.stopPropagation();
+  document.getElementById('f-image').value  = '';
+  document.getElementById('f-img-prev').classList.add('hidden');
+  document.getElementById('f-img-ph').classList.remove('hidden');
+  document.getElementById('f-img-remove').classList.add('hidden');
+}
+
+// ── Unified submit (add OR edit) ──────────────────────────────────────────────
+async function submitForm() {
+  const title  = document.getElementById('f-title').value.trim();
+  const price  = parseFloat(document.getElementById('f-price').value);
+  const market = parseFloat(document.getElementById('f-market').value);
+  const imgFile= document.getElementById('f-image').files[0];
+
+  if (!title || !price || !market) {
+    showMsg('Fill in title, price and market price.', false); return;
+  }
+
+  const btn = document.getElementById('form-submit-btn');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = editingProductId ? 'Saving…' : 'Adding…';
+
+  const fd = new FormData();
+  fd.append('title', title);
+  fd.append('price', price);
+  fd.append('market_price', market);
+  if (imgFile) fd.append('image', imgFile);
+
+  try {
+    let resp;
+    if (editingProductId) {
+      // ── EDIT: PUT /products/{id} ──────────────────────────────────────────
+      resp = await fetch(`/products/${editingProductId}`, { method: 'PUT', body: fd });
+    } else {
+      // ── ADD: POST /products/add ───────────────────────────────────────────
+      const sid = TM.getSellerId();
+      if (!sid) { showSellerModal(); btn.disabled=false; btn.textContent=origText; return; }
+      fd.append('seller_id', sid);
+      resp = await fetch('/products/add', { method: 'POST', body: fd });
+    }
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.detail || 'Request failed');
+    }
+
+    const p = await resp.json();
+    const anomaly = p.price < 0.6 * p.market_price;
+
+    if (editingProductId) {
+      showMsg(`✓ "${p.title}" updated successfully.${anomaly ? ' ⚠ Price anomaly detected.' : ''}`, true);
+    } else {
+      showMsg(`✓ "${p.title}" added.${anomaly ? ' ⚠ Price anomaly detected.' : ''}`, true);
+    }
+
+    switchToAddMode();
+    loadMyProducts();
+
+  } catch(err) {
+    showMsg(err.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
+// ── Load products list ────────────────────────────────────────────────────────
+async function loadMyProducts() {
+  const sid = TM.getSellerId(); if (!sid) return;
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('products-list').innerHTML = '';
+  document.getElementById('empty').classList.add('hidden');
+
+  try {
+    const prods = await fetch(`/products/seller/${sid}`).then(r => r.json());
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('p-count').textContent = `(${prods.length})`;
+
+    if (!prods.length) {
+      document.getElementById('empty').classList.remove('hidden');
+      return;
+    }
+
+    document.getElementById('products-list').innerHTML = prods.map(p => {
+      const anomaly = p.price < 0.6 * p.market_price;
+      return `
+      <div class="prod-card flex items-center gap-3 border border-gray-100 rounded-2xl p-3
+                  hover:border-indigo-200 transition-colors cursor-default" id="prod-${p.id}">
+
+        <!-- Thumbnail -->
+        <div class="w-12 h-12 rounded-xl overflow-hidden bg-gray-50 shrink-0 flex items-center justify-center">
+          ${p.image_path
+            ? `<img src="/${p.image_path}" class="w-full h-full object-cover" onerror="this.parentElement.textContent='📦'">`
+            : '📦'}
+        </div>
+
+        <!-- Info -->
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-gray-800 text-sm truncate">${esc(p.title)}</div>
+          <div class="text-xs text-gray-500 mt-0.5">
+            <span class="font-semibold text-gray-700">$${p.price.toFixed(2)}</span>
+            <span class="text-gray-300 line-through ml-1">$${p.market_price.toFixed(2)}</span>
+            ${anomaly ? '<span class="text-orange-500 font-semibold ml-1">⚠ price anomaly</span>' : ''}
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-2 shrink-0">
+          <a href="/product/${p.id}" target="_blank"
+            class="text-xs text-indigo-500 hover:underline font-semibold px-2 py-1">
+            View
+          </a>
+          <button onclick='startEdit(${JSON.stringify(p)})'
+            class="text-xs text-blue-500 hover:text-blue-700 font-semibold px-2 py-1
+                   bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+            ✏ Edit
+          </button>
+          <button onclick="deleteProduct(${p.id}, '${esc(p.title).replace(/'/g,"\\'")}' )"
+            class="text-xs text-red-400 hover:text-red-600 font-semibold px-2 py-1
+                   bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+            🗑 Delete
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch(err) {
+    document.getElementById('loading').innerHTML =
+      `<p class="text-red-500 text-xs text-center">${esc(err.message)}</p>`;
+  }
+}
+
+// ── Edit trigger ──────────────────────────────────────────────────────────────
+function startEdit(product) {
+  switchToEditMode(product);
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function deleteProduct(id, title) {
+  if (!confirm(`Delete "${title}"?\n\nThis will also remove any complaints linked to this product.`)) return;
+
+  try {
+    const resp = await fetch(`/products/${id}`, { method: 'DELETE' });
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.detail || 'Delete failed'); }
+
+    // If we were editing this product, cancel edit mode
+    if (editingProductId === id) switchToAddMode();
+
+    showMsg(`✓ "${title}" deleted.`, true);
+    loadMyProducts();
+
+  } catch(err) {
+    showMsg(err.message, false);
+  }
+}
+
+// ── Feedback message ──────────────────────────────────────────────────────────
+function showMsg(msg, ok) {
+  const el = document.getElementById('form-msg');
+  el.textContent = msg;
+  el.className = `mt-2 text-xs px-3 py-2 rounded-lg border ${
+    ok  ? 'text-green-700 bg-green-50 border-green-200'
+        : 'text-red-600 bg-red-50 border-red-200'
+  }`;
+  el.classList.remove('hidden');
+  if (ok) setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+init();
+</script>
+{% endblock %}

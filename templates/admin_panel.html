@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel — TrustMart{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <div class="text-xs text-gray-400 mb-0.5">Viewing as: <strong class="text-indigo-600">Admin</strong></div>
+    <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+      🛡 Admin Control Panel
+    </h1>
+  </div>
+  <div class="flex gap-2">
+    <button onclick="refreshAll()" class="border border-gray-200 hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2">
+      <span id="refresh-spinner" class="spinner hidden" style="width:14px;height:14px;border-width:2px"></span>
+      ↻ Refresh All
+    </button>
+  </div>
+</div>
+
+<!-- Stats row -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+    <div id="stat-pending" class="text-2xl font-black text-purple-600">—</div>
+    <div class="text-xs text-gray-400 font-medium">Pending Review</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+    <div id="stat-open" class="text-2xl font-black text-red-500">—</div>
+    <div class="text-xs text-gray-400 font-medium">Open Complaints</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+    <div id="stat-risky" class="text-2xl font-black text-orange-500">—</div>
+    <div class="text-xs text-gray-400 font-medium">Risky Sellers</div>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 text-center">
+    <div id="stat-sellers" class="text-2xl font-black text-indigo-600">—</div>
+    <div class="text-xs text-gray-400 font-medium">Total Sellers</div>
+  </div>
+</div>
+
+<!-- Tab navigation -->
+<div class="bg-white rounded-t-2xl border border-b-0 border-gray-100 flex overflow-x-auto">
+  <button class="tab-btn active" onclick="showAdminTab('complaints',this)">📋 Complaints</button>
+  <button class="tab-btn" onclick="showAdminTab('sellers',this)">🏪 Seller Monitor</button>
+  <button class="tab-btn" onclick="showAdminTab('signals',this)">🔬 Debug Signals</button>
+</div>
+
+<!-- Tab panels -->
+<div class="bg-white rounded-b-2xl border border-gray-100 shadow-sm">
+
+  <!-- ── Complaints tab ── -->
+  <div id="admin-tab-complaints" class="p-5">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <h2 class="font-bold text-gray-800">Complaint Management</h2>
+      <div class="ml-auto flex gap-2 flex-wrap">
+        <select id="filter-admin-status" onchange="filterComplaints()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="spam">Spam</option>
+        </select>
+        <select id="filter-status" onchange="filterComplaints()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none">
+          <option value="">Open + Resolved</option>
+          <option value="open">Open Only</option>
+          <option value="resolved">Resolved Only</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="complaints-loading" class="flex items-center gap-2 text-gray-400 text-sm py-4">
+      <div class="spinner"></div> Loading complaints…
+    </div>
+    <div id="complaints-table" class="hidden space-y-3"></div>
+    <div id="complaints-empty" class="hidden text-center py-10 text-gray-400 text-sm">No complaints found</div>
+  </div>
+
+  <!-- ── Sellers tab ── -->
+  <div id="admin-tab-sellers" class="p-5 hidden">
+    <h2 class="font-bold text-gray-800 mb-4">Seller Monitoring</h2>
+    <div class="mb-3 flex items-center gap-2">
+      <span class="text-sm text-gray-500">Threshold:</span>
+      <input id="risk-threshold" type="number" value="70" min="0" max="100"
+        class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-20 focus:outline-none">
+      <button onclick="loadSuspicious()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">Show</button>
+      <span class="text-xs text-gray-400 ml-2">Sellers at or below this trust score</span>
+    </div>
+    <div id="sellers-loading" class="flex items-center gap-2 text-gray-400 text-sm py-4">
+      <div class="spinner"></div> Loading sellers…
+    </div>
+    <div id="sellers-table" class="hidden"></div>
+  </div>
+
+  <!-- ── Signals tab ── -->
+  <div id="admin-tab-signals" class="p-5 hidden">
+    <h2 class="font-bold text-gray-800 mb-4">Feature Vector Debug</h2>
+    <div class="flex gap-2 mb-5">
+      <select id="signal-seller-select" class="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1 focus:outline-none">
+        <option value="">Select seller…</option>
+      </select>
+      <button onclick="loadSignals()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">Inspect</button>
+      <button id="recalc-btn" onclick="recalculate()" class="border border-indigo-200 hover:bg-indigo-50 text-indigo-600 px-3 py-2 rounded-lg text-sm font-semibold transition-colors hidden">
+        ↻ Recalculate
+      </button>
+    </div>
+    <div id="signals-panel"></div>
+  </div>
+
+</div><!-- /tab panels -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allComplaints = [];
+let allSellers    = [];
+
+function escHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function scoreClass(s){return s>=70?'safe':s>=40?'caution':'risk';}
+function riskColor(r){return r==='Safe'?'bg-green-100 text-green-700 border-green-200':r==='Caution'?'bg-yellow-100 text-yellow-700 border-yellow-200':'bg-red-100 text-red-700 border-red-200';}
+function barColor(r){return r==='Safe'?'bg-green-500':r==='Caution'?'bg-yellow-500':'bg-red-500';}
+
+function showAdminTab(name, btn) {
+  ['complaints','sellers','signals'].forEach(t => {
+    document.getElementById(`admin-tab-${t}`).classList.toggle('hidden', t!==name);
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Load everything ───────────────────────────────────────────────────────────
+async function refreshAll() {
+  const sp = document.getElementById('refresh-spinner');
+  sp.classList.remove('hidden');
+  await Promise.all([loadComplaints(), loadSuspicious(), loadAllSellers()]);
+  sp.classList.add('hidden');
+}
+
+async function loadAllSellers() {
+  try {
+    allSellers = await fetch('/sellers/all?limit=500').then(r=>r.json());
+    document.getElementById('stat-sellers').textContent = allSellers.length;
+    const sel = document.getElementById('signal-seller-select');
+    sel.innerHTML = '<option value="">Select seller…</option>' +
+      allSellers.map(s=>`<option value="${s.id}">${escHtml(s.name)} — Trust: ${s.trust_score}</option>`).join('');
+  } catch {}
+}
+
+async function loadComplaints() {
+  document.getElementById('complaints-loading').classList.remove('hidden');
+  document.getElementById('complaints-table').classList.add('hidden');
+  try {
+    allComplaints = await fetch('/admin/complaints?limit=500').then(r=>r.json());
+    const pending = allComplaints.filter(c=>c.admin_status==='pending').length;
+    const open    = allComplaints.filter(c=>c.status==='open').length;
+    document.getElementById('stat-pending').textContent = pending;
+    document.getElementById('stat-open').textContent    = open;
+    renderComplaints(allComplaints);
+  } catch(e) {
+    document.getElementById('complaints-loading').innerHTML = '<p class="text-red-400 text-sm">Error loading complaints</p>';
+  }
+}
+
+function filterComplaints() {
+  const adminSt = document.getElementById('filter-admin-status').value;
+  const st      = document.getElementById('filter-status').value;
+  let filtered  = allComplaints;
+  if (adminSt) filtered = filtered.filter(c=>c.admin_status===adminSt);
+  if (st)      filtered = filtered.filter(c=>c.status===st);
+  renderComplaints(filtered);
+}
+
+function mismatchBar(score) {
+  const pct = Math.round(score*100);
+  const col = pct>60?'bg-red-400':pct>30?'bg-yellow-400':'bg-green-400';
+  return `<div class="flex items-center gap-1.5">
+    <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden" style="min-width:60px">
+      <div class="${col} h-full rounded-full" style="width:${pct}%"></div>
+    </div>
+    <span class="text-xs font-semibold ${pct>60?'text-red-600':'text-gray-500'}">${pct}%</span>
+  </div>`;
+}
+
+function renderComplaints(complaints) {
+  document.getElementById('complaints-loading').classList.add('hidden');
+  const table = document.getElementById('complaints-table');
+  const empty = document.getElementById('complaints-empty');
+  if (!complaints.length) {
+    table.classList.add('hidden'); empty.classList.remove('hidden'); return;
+  }
+  empty.classList.add('hidden'); table.classList.remove('hidden');
+  table.innerHTML = complaints.map(c => `
+    <div class="border border-gray-100 rounded-xl p-4 fade-in" id="complaint-row-${c.id}">
+      <div class="flex flex-wrap items-start gap-3">
+        <!-- ID + badges -->
+        <div class="shrink-0 text-center">
+          <div class="bg-gray-100 rounded-lg px-2 py-1 text-xs font-bold text-gray-500">#${c.id}</div>
+        </div>
+        <!-- Text -->
+        <div class="flex-1 min-w-0">
+          <p class="text-sm text-gray-800 font-medium leading-snug">${escHtml(c.complaint_text)}</p>
+          <div class="flex flex-wrap gap-1.5 mt-2">
+            <span class="badge badge-${c.status}">${c.status}</span>
+            <span class="badge badge-${c.admin_status}">${c.admin_status}</span>
+            <span class="badge badge-${c.processing_status}">${c.processing_status}</span>
+            <span class="text-xs text-gray-400">Sev: <strong class="${c.severity_level>=4?'text-red-600':c.severity_level>=3?'text-orange-500':'text-yellow-600'}">${c.severity_level}/5</strong></span>
+            <a href="/seller/${c.seller_id}" class="text-xs text-indigo-500 hover:underline">Seller #${c.seller_id}</a>
+            <a href="/complaint/${c.id}" class="text-xs text-indigo-500 hover:underline">Track</a>
+          </div>
+          <div class="mt-2 flex items-center gap-3">
+            <div class="text-xs text-gray-400 mr-1">Mismatch:</div>
+            <div class="flex-1" style="max-width:140px">${mismatchBar(c.visual_mismatch_score||0)}</div>
+          </div>
+        </div>
+        <!-- Actions -->
+        <div class="flex flex-col gap-1.5 shrink-0 ${c.admin_status!=='pending'?'opacity-50 pointer-events-none':''}">
+          <button onclick="doAction(${c.id},'approve')" class="bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">✓ Approve</button>
+          <button onclick="doAction(${c.id},'reject')"  class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">✕ Reject</button>
+          <button onclick="doAction(${c.id},'spam')"    class="bg-orange-400 hover:bg-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">⚠ Spam</button>
+        </div>
+      </div>
+      <div id="action-msg-${c.id}" class="hidden text-xs font-semibold mt-2 text-center rounded-lg py-1.5 px-3"></div>
+    </div>`).join('');
+}
+
+async function doAction(complaintId, action) {
+  try {
+    const resp = await fetch(`/admin/complaints/${complaintId}/action`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action}),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail||'Action failed');
+
+    const msg = document.getElementById(`action-msg-${complaintId}`);
+    msg.textContent = `✓ Marked as ${action}`;
+    msg.className = `text-xs font-semibold mt-2 text-center rounded-lg py-1.5 px-3 ${action==='approve'?'bg-green-50 text-green-700':action==='reject'?'bg-red-50 text-red-700':'bg-orange-50 text-orange-700'}`;
+    msg.classList.remove('hidden');
+
+    // Disable buttons
+    const row = document.getElementById(`complaint-row-${complaintId}`);
+    row.querySelectorAll('button').forEach(b=>b.classList.add('opacity-50','pointer-events-none'));
+
+    // Update stats
+    await loadComplaints();
+  } catch(e) {
+    const msg = document.getElementById(`action-msg-${complaintId}`);
+    msg.textContent = `Error: ${e.message}`;
+    msg.className = 'text-xs font-semibold mt-2 text-center rounded-lg py-1.5 px-3 bg-red-50 text-red-600';
+    msg.classList.remove('hidden');
+  }
+}
+
+// ── Suspicious sellers ────────────────────────────────────────────────────────
+async function loadSuspicious() {
+  const threshold = document.getElementById('risk-threshold')?.value || 70;
+  document.getElementById('sellers-loading').classList.remove('hidden');
+  document.getElementById('sellers-table').classList.add('hidden');
+  try {
+    const sellers = await fetch(`/admin/sellers/suspicious?threshold=${threshold}`).then(r=>r.json());
+    document.getElementById('stat-risky').textContent = sellers.length;
+    document.getElementById('sellers-loading').classList.add('hidden');
+    document.getElementById('sellers-table').classList.remove('hidden');
+    document.getElementById('sellers-table').innerHTML = sellers.length
+      ? sellers.map(s => {
+          const risk = s.trust_score>=70?'Safe':s.trust_score>=40?'Caution':'High Risk';
+          return `
+          <div class="flex items-center justify-between border border-gray-100 rounded-xl p-4 mb-2 hover:border-indigo-200 transition-colors">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600 text-sm">
+                ${(s.name||'?')[0].toUpperCase()}
+              </div>
+              <div>
+                <div class="font-semibold text-gray-800">${escHtml(s.name)}</div>
+                <div class="text-xs text-gray-400">ID: ${s.id} · Age: ${s.account_age_days}d · ${s.open_complaint_count||0} open complaints</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-center">
+                <div class="font-black text-xl ${s.trust_score>=70?'text-green-600':s.trust_score>=40?'text-yellow-600':'text-red-600'}">${s.trust_score}</div>
+                <div class="text-xs text-gray-400">trust</div>
+              </div>
+              <span class="badge border text-xs font-bold ${riskColor(risk)}">${risk}</span>
+              <div class="flex gap-1.5">
+                <a href="/seller/${s.id}" class="border border-indigo-200 hover:bg-indigo-50 text-indigo-600 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors">Dashboard</a>
+                <button onclick="recalculateSeller(${s.id}, this)" class="border border-gray-200 hover:bg-gray-50 text-gray-600 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors">↻</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')
+      : `<div class="text-center py-8 text-gray-400 text-sm">
+          <span class="block text-2xl mb-2">✅</span>No sellers at or below trust score ${threshold}
+        </div>`;
+  } catch(e) {
+    document.getElementById('sellers-loading').innerHTML = '<p class="text-red-400 text-sm">Error loading sellers</p>';
+  }
+}
+
+async function recalculateSeller(sellerId, btn) {
+  btn.textContent = '…'; btn.disabled = true;
+  try {
+    const r = await fetch(`/admin/sellers/${sellerId}/recalculate`,{method:'POST'}).then(r=>r.json());
+    btn.textContent = `✓ ${r.trust_score}`;
+    btn.className   = btn.className.replace('text-gray-600','text-green-600');
+    setTimeout(() => loadSuspicious(), 800);
+  } catch { btn.textContent = '✕'; btn.disabled = false; }
+}
+
+// ── Signals debug ─────────────────────────────────────────────────────────────
+async function loadSignals() {
+  const sid = document.getElementById('signal-seller-select').value;
+  if (!sid) return;
+  document.getElementById('recalc-btn').classList.remove('hidden');
+  const panel = document.getElementById('signals-panel');
+  panel.innerHTML = '<div class="flex items-center gap-2 text-gray-400 text-sm"><div class="spinner"></div> Loading signals…</div>';
+  try {
+    const data = await fetch(`/admin/sellers/${sid}/signals`).then(r=>r.json());
+    const s = data.signals;
+    const w = data.feature_weights;
+    const score = data.trust_score;
+    const risk  = score>=70?'Safe':score>=40?'Caution':'High Risk';
+
+    panel.innerHTML = `
+      <div class="mb-4 flex items-center gap-3">
+        <div class="trust-ring ${scoreClass(score)}" style="width:60px;height:60px;font-size:1.2rem">${score}</div>
+        <div>
+          <div class="font-bold text-gray-800">${data.seller_name || 'Seller #'+sid}</div>
+          <span class="badge text-sm font-bold ${riskColor(risk)}">${risk}</span>
+        </div>
+      </div>
+      <div class="space-y-2">
+        ${Object.entries(s.features||{}).map(([key, val]) => {
+          const weight = w[key] || 0;
+          const contribution = val * weight;
+          const pct = Math.round(val * 100);
+          const wPct = Math.round(weight * 100);
+          const col = pct>75?'bg-red-400':pct>50?'bg-orange-400':pct>25?'bg-yellow-400':'bg-green-400';
+          return `
+          <div class="border border-gray-100 rounded-xl p-3 hover:border-indigo-200 transition-colors">
+            <div class="flex items-center justify-between mb-1.5">
+              <div>
+                <span class="font-semibold text-gray-700 text-sm">${key.replace(/_/g,' ')}</span>
+                <span class="text-xs text-gray-400 ml-2">weight: ${wPct}%</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-400">raw: ${val.toFixed(4)}</span>
+                <span class="font-bold text-sm ${contribution>0.1?'text-red-600':contribution>0.05?'text-orange-500':'text-gray-500'}">+${(contribution*100).toFixed(1)} risk</span>
+              </div>
+            </div>
+            <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div class="${col} h-full rounded-full" style="width:${pct}%"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="mt-4 bg-gray-50 rounded-xl p-4">
+        <div class="flex justify-between items-center">
+          <span class="font-semibold text-gray-700">Total Weighted Risk</span>
+          <span class="font-black text-xl ${parseFloat(s.weighted_risk)>0.6?'text-red-600':parseFloat(s.weighted_risk)>0.3?'text-orange-500':'text-green-600'}">${(s.weighted_risk*100).toFixed(1)}%</span>
+        </div>
+        <div class="h-3 bg-gray-100 rounded-full overflow-hidden mt-2">
+          <div class="${parseFloat(s.weighted_risk)>0.6?'bg-red-500':parseFloat(s.weighted_risk)>0.3?'bg-yellow-500':'bg-green-500'} h-full rounded-full progress-bar" style="width:${s.weighted_risk*100}%"></div>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">Trust score = (1 - weighted_risk) × 100 = <strong>${score}</strong></p>
+      </div>`;
+  } catch(e) {
+    panel.innerHTML = `<p class="text-red-400 text-sm">Error: ${e.message}</p>`;
+  }
+}
+
+async function recalculate() {
+  const sid = document.getElementById('signal-seller-select').value;
+  if (!sid) return;
+  const btn = document.getElementById('recalc-btn');
+  btn.textContent = '↻ Recalculating…'; btn.disabled = true;
+  try {
+    await fetch(`/admin/sellers/${sid}/recalculate`,{method:'POST'});
+    await loadSignals();
+    btn.textContent = '↻ Recalculate';
+  } catch {}
+  btn.disabled = false;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+refreshAll();
+</script>
+{% endblock %}

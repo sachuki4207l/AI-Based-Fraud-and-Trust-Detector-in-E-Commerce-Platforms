@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Debug Signals — Admin{% endblock %}
+
+{% block content %}
+<div class="mb-4 flex items-center gap-2 text-sm">
+  <a href="/admin-sellers" class="text-indigo-600 hover:underline">← Sellers</a>
+  <span class="text-gray-400">/</span>
+  <span class="text-gray-500">Debug Signals</span>
+</div>
+<h1 class="text-2xl font-bold text-gray-900 mb-5">🔬 Feature Vector Debug</h1>
+
+<div id="loading" class="flex justify-center py-20">
+  <div class="spinner" style="width:36px;height:36px;border-width:4px"></div>
+</div>
+
+<div id="page-content" class="hidden fade-in">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <!-- Seller summary -->
+    <div class="space-y-4">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div class="flex items-center gap-3 mb-4">
+          <div id="s-avatar" class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-xl font-bold text-indigo-600"></div>
+          <div>
+            <div id="s-name" class="font-bold text-gray-900"></div>
+            <div id="s-age" class="text-xs text-gray-400 mt-0.5"></div>
+          </div>
+        </div>
+        <div class="flex justify-center py-4 border-t border-b border-gray-100 my-3">
+          <div id="trust-ring" class="trust-ring">—</div>
+        </div>
+        <div id="risk-badge" class="badge text-sm font-bold text-center block mt-2"></div>
+        <div id="s-rec" class="mt-3 text-sm text-center py-2 px-3 rounded-xl font-medium"></div>
+        <div class="mt-3 flex gap-2">
+          <a id="dashboard-link" href="#" class="flex-1 text-center text-xs text-indigo-600 border border-indigo-200 hover:bg-indigo-50 py-2 rounded-xl font-semibold transition-colors">Dashboard</a>
+          <a id="complaints-link" href="#" class="flex-1 text-center text-xs text-red-600 border border-red-200 hover:bg-red-50 py-2 rounded-xl font-semibold transition-colors">Complaints</a>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h2 class="font-bold text-gray-800 text-sm mb-3">Reasons</h2>
+        <ul id="reasons-list" class="space-y-2 text-sm text-gray-600"></ul>
+      </div>
+    </div>
+
+    <!-- Feature vector -->
+    <div class="lg:col-span-2">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <h2 class="font-bold text-gray-800 mb-1">Feature Vector</h2>
+        <p class="text-xs text-gray-400 mb-4">Each feature is normalised 0→1, then multiplied by its weight. <code class="bg-gray-100 px-1 rounded">trust = (1 − weighted_risk) × 100</code></p>
+        <div id="features-list" class="space-y-3"></div>
+        <div class="mt-5 pt-4 border-t border-gray-100">
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-bold text-gray-700 text-sm">Total Weighted Risk</span>
+            <span id="wrisk-label" class="font-black text-xl"></span>
+          </div>
+          <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div id="wrisk-bar" class="h-full rounded-full transition-all duration-700" style="width:0%"></div>
+          </div>
+          <p class="text-xs text-gray-400 mt-2" id="formula-line"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="error-state" class="hidden text-center py-20">
+  <div class="text-4xl mb-3">🔍</div>
+  <p class="text-gray-500">Seller not found</p>
+  <a href="/admin-sellers" class="text-indigo-600 text-sm hover:underline mt-2 inline-block">← Back to sellers</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SELLER_ID = {{ seller_id }};
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const scoreCol = s => s>=70?'#16a34a':s>=40?'#d97706':'#dc2626';
+const scoreClass = s => s>=70?'safe':s>=40?'caution':'risk';
+const riskLabel = s => s>=70?'Safe':s>=40?'Caution':'High Risk';
+const riskBadge = s => s>=70?'bg-green-100 text-green-700':s>=40?'bg-yellow-100 text-yellow-700':'bg-red-100 text-red-700';
+const barCol = v => v>0.75?'#ef4444':v>0.5?'#f59e0b':v>0.25?'#84cc16':'#16a34a';
+
+const FEAT_LABELS = {
+  open_complaint_ratio:'Open complaint ratio',
+  avg_severity:'Avg severity',
+  mean_visual_mismatch:'Mean visual mismatch (AI)',
+  buyer_credibility_weighted_sev:'Cred-weighted severity',
+  price_anomaly_ratio:'Price anomaly ratio',
+  complaint_frequency:'Complaint frequency',
+  account_age_penalty:'Account age penalty',
+};
+const FEAT_WEIGHTS = {
+  open_complaint_ratio:.25,avg_severity:.20,mean_visual_mismatch:.20,
+  buyer_credibility_weighted_sev:.15,price_anomaly_ratio:.10,
+  complaint_frequency:.05,account_age_penalty:.05,
+};
+
+async function load() {
+  try {
+    const [adv, signals] = await Promise.all([
+      fetch(`/advisory/seller/${SELLER_ID}`).then(r=>{ if(!r.ok) throw r; return r.json(); }),
+      fetch(`/admin/sellers/${SELLER_ID}/signals`).then(r=>r.json()),
+    ]);
+
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('page-content').classList.remove('hidden');
+
+    const score = adv.trust_score, risk = adv.risk_level;
+    document.getElementById('s-avatar').textContent = (adv.seller_name||'?')[0].toUpperCase();
+    document.getElementById('s-name').textContent   = adv.seller_name;
+    document.getElementById('s-age').textContent    = `${adv.account_age_days} days active · AI: ${adv.ai_model_used}`;
+
+    const ring = document.getElementById('trust-ring');
+    ring.textContent = score; ring.className = `trust-ring ${scoreClass(score)}`;
+
+    const badge = document.getElementById('risk-badge');
+    badge.textContent = risk; badge.className = `badge text-sm font-bold ${riskBadge(score)}`;
+
+    const rec = document.getElementById('s-rec');
+    rec.textContent = adv.recommendation;
+    rec.className = `mt-3 text-sm text-center py-2 px-3 rounded-xl font-medium ${score>=70?'bg-green-50 text-green-700':score>=40?'bg-yellow-50 text-yellow-700':'bg-red-50 text-red-700'}`;
+
+    document.getElementById('dashboard-link').href   = `/seller/${SELLER_ID}`;
+    document.getElementById('complaints-link').href  = `/admin/complaints`;
+
+    document.getElementById('reasons-list').innerHTML = (adv.reasons||[]).length
+      ? adv.reasons.map(r=>`<li class="flex gap-2 items-start text-xs"><span class="text-amber-500 shrink-0">⚠</span>${esc(r)}</li>`).join('')
+      : `<li class="text-green-600 text-xs">✓ No risk factors</li>`;
+
+    // Feature rows
+    const feats = signals.signals?.features || {};
+    document.getElementById('features-list').innerHTML = Object.entries(FEAT_LABELS).map(([key, label]) => {
+      const val = feats[key] || 0;
+      const w   = FEAT_WEIGHTS[key] || 0;
+      const pct = Math.round(val * 100);
+      const contrib = (val * w * 100).toFixed(1);
+      const bc = barCol(val);
+      return `
+      <div class="grid grid-cols-[1fr_auto_auto] gap-3 items-center pb-3 border-b border-gray-50 last:border-0">
+        <div>
+          <div class="text-sm font-semibold text-gray-700">${label}</div>
+          <div class="text-xs text-gray-400 mt-0.5">weight: ${(w*100).toFixed(0)}% of total</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div style="width:${pct}%;height:100%;border-radius:9999px;background:${bc};transition:width .7s"></div>
+          </div>
+          <span class="text-xs font-bold w-8 text-right" style="color:${bc}">${pct}%</span>
+        </div>
+        <div class="text-right w-14">
+          <span class="text-xs font-bold" style="color:${parseFloat(contrib)>5?'#ef4444':parseFloat(contrib)>2?'#f59e0b':'#64748b'}">+${contrib}</span>
+          <div class="text-xs text-gray-300">pts</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const wr = signals.signals?.weighted_risk || adv.signals?.weighted_risk || 0;
+    const wrBar = document.getElementById('wrisk-bar');
+    wrBar.style.background = wr>0.6?'#ef4444':wr>0.3?'#f59e0b':'#16a34a';
+    setTimeout(() => wrBar.style.width = `${wr*100}%`, 100);
+    document.getElementById('wrisk-label').textContent = `${(wr*100).toFixed(1)}%`;
+    document.getElementById('wrisk-label').style.color = wr>0.6?'#ef4444':wr>0.3?'#f59e0b':'#16a34a';
+    document.getElementById('formula-line').textContent = `trust_score = (1 − ${wr.toFixed(3)}) × 100 = ${score}`;
+
+  } catch {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('error-state').classList.remove('hidden');
+  }
+}
+
+load();
+</script>
+{% endblock %}

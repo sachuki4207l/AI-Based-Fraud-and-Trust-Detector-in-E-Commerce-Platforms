@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}Report Issue — TrustMart{% endblock %}
+
+{% block content %}
+<div class="mb-4"><a id="back-link" href="/" class="text-sm text-indigo-600 hover:underline">← Back to product</a></div>
+
+<div class="max-w-xl mx-auto">
+
+  <!-- No buyer identity guard -->
+  <div id="no-identity" class="hidden bg-yellow-50 border border-yellow-200 rounded-2xl p-5 mb-5 text-center">
+    <div class="text-3xl mb-2">👤</div>
+    <h2 class="font-bold text-yellow-800 mb-1">Set your buyer account first</h2>
+    <p class="text-sm text-yellow-700 mb-4">You need a buyer account to submit complaints.</p>
+    <button onclick="showBuyerModal()" class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+      Set Account
+    </button>
+  </div>
+
+  <div id="form-wrap">
+    <h1 class="text-2xl font-bold text-gray-900 mb-1">🚩 Report an Issue</h1>
+    <p class="text-sm text-gray-500 mb-5">Describe what went wrong. AI will analyse your description and any evidence photo.</p>
+
+    <!-- Who is reporting (auto-populated, not a dropdown) -->
+    <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 mb-5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-indigo-200 flex items-center justify-center text-sm font-bold text-indigo-700" id="buyer-avatar">?</div>
+        <div>
+          <div class="text-xs text-indigo-500 font-medium">Reporting as</div>
+          <div id="buyer-display-name" class="font-semibold text-indigo-800 text-sm">Loading…</div>
+        </div>
+      </div>
+      <button onclick="showBuyerModal()" class="text-xs text-indigo-500 hover:underline">Change</button>
+    </div>
+
+    <!-- Product context card -->
+    <div id="context-card" class="bg-white border border-gray-100 rounded-2xl p-4 mb-5 flex items-center gap-3 shadow-sm">
+      <div id="ctx-img" class="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl overflow-hidden shrink-0">📦</div>
+      <div class="flex-1 min-w-0">
+        <div id="ctx-title" class="font-semibold text-gray-800 text-sm truncate">Loading product…</div>
+        <div id="ctx-meta" class="text-xs text-gray-500 mt-0.5"></div>
+      </div>
+    </div>
+
+    <!-- Complaint form -->
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+
+      <!-- Complaint text -->
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-1">Describe the issue <span class="text-red-400">*</span></label>
+        <textarea id="complaint-text" rows="4"
+          placeholder="e.g. The product I received looks completely different from the listing. It appears to be a counterfeit item…"
+          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"></textarea>
+        <div id="sev-preview" class="mt-1.5 text-xs font-medium text-indigo-600 min-h-[16px]"></div>
+      </div>
+
+      <!-- Keyword chips -->
+      <div>
+        <div class="text-xs text-gray-400 font-medium mb-2">Quick keywords (tap to add):</div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="addKw('fake')"        class="kw-chip">fake</button>
+          <button onclick="addKw('wrong item')"  class="kw-chip">wrong item</button>
+          <button onclick="addKw('damaged')"     class="kw-chip">damaged</button>
+          <button onclick="addKw('counterfeit')" class="kw-chip">counterfeit</button>
+          <button onclick="addKw('scam')"        class="kw-chip">scam</button>
+          <button onclick="addKw('not working')" class="kw-chip">not working</button>
+          <button onclick="addKw('missing')"     class="kw-chip">missing</button>
+          <button onclick="addKw('broken')"      class="kw-chip">broken</button>
+        </div>
+      </div>
+
+      <!-- Image upload -->
+      <div>
+        <label class="block text-xs font-semibold text-gray-500 mb-1">Evidence photo <span class="text-gray-400 font-normal">(optional — AI compares to listing)</span></label>
+        <div id="drop-zone" onclick="document.getElementById('img-upload').click()"
+          class="border-2 border-dashed border-gray-200 hover:border-indigo-300 rounded-xl p-5 text-center cursor-pointer transition-colors">
+          <input type="file" id="img-upload" accept="image/*" class="hidden" onchange="previewImg(this)">
+          <div id="upload-placeholder">
+            <div class="text-3xl mb-1">📸</div>
+            <p class="text-sm text-gray-400">Click or drag & drop</p>
+            <p class="text-xs text-gray-300 mt-0.5">JPG, PNG, WEBP · max 5 MB</p>
+          </div>
+          <img id="img-preview-el" class="hidden mx-auto max-h-40 rounded-xl object-cover">
+          <button id="remove-img-btn" onclick="removeImg(event)" class="hidden mt-2 text-xs text-red-400 hover:underline">Remove</button>
+        </div>
+      </div>
+
+      <button id="submit-btn" onclick="submitComplaint()"
+        class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+        🚩 Submit Complaint
+      </button>
+      <p id="form-error" class="text-red-500 text-xs text-center hidden"></p>
+    </div>
+  </div>
+
+  <!-- Success state -->
+  <div id="success-state" class="hidden fade-in">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+      <div class="text-5xl mb-3">✅</div>
+      <h2 class="text-xl font-bold text-gray-900 mb-2">Complaint Submitted</h2>
+      <p class="text-gray-500 text-sm mb-5">Your complaint is queued for AI analysis. Severity will be computed automatically.</p>
+      <div class="bg-indigo-50 rounded-xl py-3 px-5 mb-5 inline-block">
+        <div class="text-xs text-gray-400">Complaint ID</div>
+        <div id="cid-out" class="text-2xl font-black text-indigo-600"></div>
+      </div>
+      <div class="flex gap-3 justify-center flex-wrap">
+        <a id="track-link" href="#" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+          Track My Complaint →
+        </a>
+        <a href="/" class="border border-gray-200 hover:bg-gray-50 text-gray-600 font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors">
+          Back to Marketplace
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.kw-chip{background:#eff6ff;color:#3b82f6;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9999px;border:1.5px solid #bfdbfe;cursor:pointer;transition:all .15s}
+.kw-chip:hover{background:#dbeafe}
+</style>
+<script>
+// Read product_id and seller_id from URL — no manual input needed
+const params = new URLSearchParams(window.location.search);
+const PRODUCT_ID = parseInt(params.get('product_id')) || 0;
+const SELLER_ID  = parseInt(params.get('seller_id'))  || 0;
+
+const KW = {fraud:3,fake:3,scam:3,counterfeit:3,wrong:2,broken:2,damaged:2,missing:2,'not working':2,defective:2,different:1,poor:1,bad:1};
+
+function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ── Update buyer display ───────────────────────────────────────────────────
+function updateBuyerDisplay() {
+  const bid = TM.getBuyerId(), bname = TM.getBuyerName();
+  if (bid) {
+    document.getElementById('buyer-display-name').textContent = bname || 'Buyer #'+bid;
+    document.getElementById('buyer-avatar').textContent = (bname||'?')[0].toUpperCase();
+    document.getElementById('no-identity').classList.add('hidden');
+    document.getElementById('form-wrap').classList.remove('hidden');
+  } else {
+    document.getElementById('buyer-display-name').textContent = 'Not set';
+    document.getElementById('buyer-avatar').textContent = '?';
+    document.getElementById('no-identity').classList.remove('hidden');
+  }
+}
+function onBuyerSet() { updateBuyerDisplay(); }
+
+// ── Load product context ───────────────────────────────────────────────────
+async function loadContext() {
+  if (!PRODUCT_ID) return;
+  try {
+    const p = await fetch(`/products/${PRODUCT_ID}`).then(r=>r.json());
+    document.getElementById('ctx-title').textContent = p.title;
+    document.getElementById('ctx-meta').textContent  = `$${p.price.toFixed(2)} · Seller #${p.seller_id}`;
+    document.getElementById('back-link').href = `/product/${PRODUCT_ID}`;
+    if (p.image_path) {
+      document.getElementById('ctx-img').innerHTML = `<img src="/${p.image_path}" class="w-full h-full object-cover rounded-xl" onerror="this.parentElement.textContent='📦'">`;
+    }
+  } catch {}
+}
+
+// ── Severity preview ───────────────────────────────────────────────────────
+document.getElementById('complaint-text').addEventListener('input', function(){
+  let raw = 0;
+  const txt = this.value.toLowerCase();
+  for (const [k,w] of Object.entries(KW)) if (txt.includes(k)) raw += w;
+  const sev = Math.max(1, Math.min(5, Math.round(raw/5*2)));
+  const cols = ['','#16a34a','#84cc16','#f59e0b','#ef4444','#dc2626'];
+  const labels = ['','Minor','Low','Moderate','High','Critical'];
+  const dots = '●'.repeat(sev)+'○'.repeat(5-sev);
+  document.getElementById('sev-preview').innerHTML = raw > 0
+    ? `<span style="color:${cols[sev]}">AI will compute severity ~ ${dots} ${labels[sev]}</span>`
+    : '';
+});
+
+function addKw(kw) {
+  const ta = document.getElementById('complaint-text');
+  ta.value += (ta.value.trim() ? ' ' : '') + kw;
+  ta.dispatchEvent(new Event('input'));
+  ta.focus();
+}
+
+// ── Image upload ───────────────────────────────────────────────────────────
+function previewImg(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('img-preview-el').src = e.target.result;
+    document.getElementById('img-preview-el').classList.remove('hidden');
+    document.getElementById('upload-placeholder').classList.add('hidden');
+    document.getElementById('remove-img-btn').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+function removeImg(e) {
+  e.stopPropagation();
+  document.getElementById('img-upload').value = '';
+  document.getElementById('img-preview-el').classList.add('hidden');
+  document.getElementById('upload-placeholder').classList.remove('hidden');
+  document.getElementById('remove-img-btn').classList.add('hidden');
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────
+async function submitComplaint() {
+  const buyerId  = TM.getBuyerId();
+  const text     = document.getElementById('complaint-text').value.trim();
+  const imgFile  = document.getElementById('img-upload').files[0];
+
+  if (!buyerId) { showBuyerModal(); return; }
+  if (!PRODUCT_ID || !SELLER_ID) { showErr('Product not identified. Please go back and click Report Issue again.'); return; }
+  if (text.length < 5) { showErr('Please describe the issue (at least 5 characters).'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px"></div><span>Submitting…</span>';
+  hideErr();
+
+  const fd = new FormData();
+  fd.append('buyer_id', buyerId);
+  fd.append('seller_id', SELLER_ID);
+  fd.append('product_id', PRODUCT_ID);
+  fd.append('complaint_text', text);
+  if (imgFile) fd.append('received_image', imgFile);
+
+  try {
+    const resp = await fetch('/complaints/add', {method:'POST', body: fd});
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.detail || 'Submission failed'); }
+    const r = await resp.json();
+    const cid = r.complaint_id || r.complaint?.id || r.id;
+    document.getElementById('form-wrap').classList.add('hidden');
+    document.getElementById('success-state').classList.remove('hidden');
+    document.getElementById('cid-out').textContent  = `#${cid}`;
+    document.getElementById('track-link').href      = `/complaint/${cid}`;
+  } catch(e) {
+    showErr(e.message);
+    btn.disabled = false;
+    btn.innerHTML = '🚩 Submit Complaint';
+  }
+}
+
+function showErr(msg){ const e=document.getElementById('form-error'); e.textContent=msg; e.classList.remove('hidden'); }
+function hideErr()   { document.getElementById('form-error').classList.add('hidden'); }
+
+updateBuyerDisplay();
+loadContext();
+</script>
+{% endblock %}

@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Track Complaint — TrustMart{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+  <a href="/" class="text-sm text-indigo-600 hover:underline">← Marketplace</a>
+</div>
+
+<div class="max-w-2xl mx-auto space-y-5">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Complaint Tracker</h1>
+    <p class="text-gray-500 text-sm mt-0.5">Live status of your complaint — refreshes automatically.</p>
+  </div>
+
+  <!-- Complaint ID badge -->
+  <div class="flex items-center gap-3">
+    <div class="bg-indigo-600 text-white font-black text-xl px-5 py-2 rounded-xl">#{{ complaint_id }}</div>
+    <div id="processing-badge" class="badge badge-queued">⏳ queued</div>
+    <div id="live-spinner" class="spinner hidden"></div>
+  </div>
+
+  <!-- Pipeline progress -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <h2 class="font-bold text-gray-700 mb-5">Processing Pipeline</h2>
+    <div class="relative">
+      <!-- Track line -->
+      <div class="absolute left-5 top-5 bottom-5 w-0.5 bg-gray-100" id="pipeline-line"></div>
+      <div class="space-y-6">
+        <div class="pipeline-step flex items-start gap-4" id="step-submitted">
+          <div class="step-dot w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 bg-white z-10"></div>
+          <div class="pt-1">
+            <div class="font-semibold text-gray-800">Complaint Submitted</div>
+            <div class="text-xs text-gray-400 mt-0.5">Received and saved to database</div>
+          </div>
+        </div>
+        <div class="pipeline-step flex items-start gap-4" id="step-queued">
+          <div class="step-dot w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 bg-white z-10"></div>
+          <div class="pt-1">
+            <div class="font-semibold text-gray-800">Queued for AI Processing</div>
+            <div class="text-xs text-gray-400 mt-0.5">Background worker scheduled</div>
+          </div>
+        </div>
+        <div class="pipeline-step flex items-start gap-4" id="step-ai">
+          <div class="step-dot w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 bg-white z-10"></div>
+          <div class="pt-1">
+            <div class="font-semibold text-gray-800">AI Image Analysis</div>
+            <div class="text-xs text-gray-400 mt-0.5">Comparing evidence to product listing</div>
+          </div>
+        </div>
+        <div class="pipeline-step flex items-start gap-4" id="step-severity">
+          <div class="step-dot w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 bg-white z-10"></div>
+          <div class="pt-1">
+            <div class="font-semibold text-gray-800">Severity Computed</div>
+            <div class="text-xs text-gray-400 mt-0.5">AI mismatch + text analysis → severity level</div>
+          </div>
+        </div>
+        <div class="pipeline-step flex items-start gap-4" id="step-trust">
+          <div class="step-dot w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 bg-white z-10"></div>
+          <div class="pt-1">
+            <div class="font-semibold text-gray-800">Seller Trust Recalculated</div>
+            <div class="text-xs text-gray-400 mt-0.5">Feature vector updated with this complaint</div>
+          </div>
+        </div>
+        <div class="pipeline-step flex items-start gap-4" id="step-done">
+          <div class="step-dot w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 bg-white z-10"></div>
+          <div class="pt-1">
+            <div class="font-semibold text-gray-800">Processing Complete</div>
+            <div class="text-xs text-gray-400 mt-0.5">Pending admin review</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results (shown when done) -->
+  <div id="results-card" class="hidden fade-in bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <h2 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+      <span class="text-green-500">✓</span> Analysis Results
+    </h2>
+    <div class="grid grid-cols-2 gap-4">
+      <!-- Severity -->
+      <div class="signal-card text-center">
+        <div class="text-xs text-gray-500 font-medium mb-1">Auto-Computed Severity</div>
+        <div id="res-severity" class="text-4xl font-black text-gray-900"></div>
+        <div class="text-xs text-gray-400 mt-0.5">out of 5</div>
+        <div id="res-sev-bar" class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div id="res-sev-fill" class="h-full rounded-full progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+      <!-- Mismatch -->
+      <div class="signal-card text-center">
+        <div class="text-xs text-gray-500 font-medium mb-1">Visual Mismatch Score</div>
+        <div id="res-mismatch" class="text-4xl font-black text-gray-900"></div>
+        <div class="text-xs text-gray-400 mt-0.5">AI confidence</div>
+        <div id="res-mismatch-bar" class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div id="res-mismatch-fill" class="h-full rounded-full progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complaint text -->
+    <div class="mt-4 bg-gray-50 rounded-xl p-4">
+      <div class="text-xs text-gray-400 font-medium mb-1">Complaint Description</div>
+      <p id="res-text" class="text-sm text-gray-700"></p>
+    </div>
+
+    <!-- Evidence image -->
+    <div id="evidence-wrap" class="hidden mt-4">
+      <div class="text-xs text-gray-400 font-medium mb-2">Evidence Photo</div>
+      <img id="evidence-img" src="" class="max-h-48 rounded-xl border border-gray-100 object-cover">
+    </div>
+
+    <!-- Admin status -->
+    <div class="mt-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-gray-400">Admin Status:</span>
+        <span id="res-admin" class="badge"></span>
+      </div>
+      <a id="seller-link" href="#" class="text-sm text-indigo-600 hover:underline font-medium">View Seller Dashboard →</a>
+    </div>
+  </div>
+
+  <!-- Complaint details -->
+  <div id="details-card" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+    <h3 class="font-bold text-gray-700 text-sm mb-3">Complaint Info</h3>
+    <div id="details-content" class="text-sm text-gray-400 flex items-center gap-2">
+      <div class="spinner"></div> Loading…
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const COMPLAINT_ID = {{ complaint_id }};
+let pollTimer = null;
+let lastStatus = null;
+
+function escHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+// Pipeline step configuration
+const STEPS = ['submitted','queued','ai','severity','trust','done'];
+const STEP_LABELS = {
+  queued:   { active:'Queued',    done:'✓ Queued' },
+  done:     { active:'Processing…', done:'✓ Done' },
+};
+
+function updatePipeline(status, adminStatus) {
+  const isDone = status === 'done';
+  const steps = ['submitted','queued','ai','severity','trust','done'];
+  const activeIdx = isDone ? steps.length : status==='queued' ? 1 : 0;
+
+  steps.forEach((s, i) => {
+    const dot = document.querySelector(`#step-${s} .step-dot`);
+    if (i < activeIdx || isDone) {
+      dot.className = 'step-dot w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 bg-green-500 border-green-500 text-white z-10';
+      dot.textContent = '✓';
+    } else if (i === activeIdx && !isDone) {
+      dot.className = 'step-dot w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 bg-indigo-100 border-indigo-400 text-indigo-600 z-10';
+      dot.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#4338ca"></div>';
+    } else {
+      dot.className = 'step-dot w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-bold shrink-0 bg-gray-50 border-gray-200 text-gray-300 z-10';
+      dot.textContent = i+1;
+    }
+  });
+}
+
+function renderBadge(status, adminStatus) {
+  const badge = document.getElementById('processing-badge');
+  const spinner = document.getElementById('live-spinner');
+  if (status === 'done') {
+    badge.textContent = '✓ done'; badge.className = 'badge badge-done';
+    spinner.classList.add('hidden');
+  } else if (status === 'queued') {
+    badge.textContent = '⏳ queued'; badge.className = 'badge badge-queued';
+    spinner.classList.remove('hidden');
+  }
+}
+
+function renderDetails(c) {
+  document.getElementById('details-content').innerHTML = `
+    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+      <div class="text-gray-400">Buyer ID</div><div class="font-medium text-gray-700">${c.buyer_id}</div>
+      <div class="text-gray-400">Seller ID</div><div class="font-medium text-gray-700">${c.seller_id}</div>
+      <div class="text-gray-400">Product ID</div><div class="font-medium text-gray-700">${c.product_id}</div>
+      <div class="text-gray-400">Status</div><div><span class="badge badge-${c.status}">${c.status}</span></div>
+      <div class="text-gray-400">Submitted</div><div class="font-medium text-gray-700">${new Date(c.created_at).toLocaleString()}</div>
+    </div>`;
+}
+
+function renderResults(c) {
+  const sev = c.severity_level || 0;
+  const mis = c.visual_mismatch_score || 0;
+  const sevColors = ['','bg-green-400','bg-yellow-400','bg-orange-400','bg-red-500','bg-red-700'];
+
+  document.getElementById('res-severity').textContent = sev;
+  document.getElementById('res-severity').className = `text-4xl font-black ${sev>=4?'text-red-600':sev>=3?'text-orange-500':sev>=2?'text-yellow-600':'text-green-600'}`;
+  const sevFill = document.getElementById('res-sev-fill');
+  sevFill.className = `h-full rounded-full progress-bar ${sevColors[sev]||'bg-gray-300'}`;
+  setTimeout(()=>sevFill.style.width=`${(sev/5)*100}%`, 100);
+
+  const misPct = Math.round(mis*100);
+  document.getElementById('res-mismatch').textContent = `${misPct}%`;
+  document.getElementById('res-mismatch').className = `text-4xl font-black ${misPct>60?'text-red-600':misPct>30?'text-orange-500':'text-green-600'}`;
+  const misFill = document.getElementById('res-mismatch-fill');
+  misFill.className = `h-full rounded-full progress-bar ${misPct>60?'bg-red-500':misPct>30?'bg-orange-400':'bg-green-400'}`;
+  setTimeout(()=>misFill.style.width=`${misPct}%`, 150);
+
+  document.getElementById('res-text').textContent = c.complaint_text;
+
+  const adminBadge = document.getElementById('res-admin');
+  adminBadge.textContent = c.admin_status;
+  adminBadge.className = `badge badge-${c.admin_status}`;
+
+  document.getElementById('seller-link').href = `/seller/${c.seller_id}`;
+
+  if (c.received_image_path) {
+    document.getElementById('evidence-img').src = `/${c.received_image_path}`;
+    document.getElementById('evidence-wrap').classList.remove('hidden');
+  }
+
+  document.getElementById('results-card').classList.remove('hidden');
+}
+
+async function poll() {
+  try {
+    const c = await fetch(`/complaints/${COMPLAINT_ID}`).then(r => {
+      if (!r.ok) throw r;
+      return r.json();
+    });
+
+    renderBadge(c.processing_status, c.admin_status);
+    updatePipeline(c.processing_status);
+    renderDetails(c);
+
+    if (c.processing_status === 'done' && lastStatus !== 'done') {
+      renderResults(c);
+    }
+    lastStatus = c.processing_status;
+
+    if (c.processing_status !== 'done') {
+      pollTimer = setTimeout(poll, 3000);
+    }
+  } catch(e) {
+    document.getElementById('details-content').textContent = 'Error loading complaint.';
+  }
+}
+
+// Start polling immediately
+poll();
+</script>
+{% endblock %}

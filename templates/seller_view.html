@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}My Store — TrustMart{% endblock %}
+
+{% block content %}
+<div class="mb-2">
+  <div class="text-xs text-gray-400 mb-1">You are viewing as: <strong class="text-indigo-600">Seller</strong></div>
+  <h1 class="text-2xl font-bold text-gray-900">My Store Dashboard</h1>
+</div>
+
+<!-- Seller selector -->
+<div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5 flex flex-wrap items-center gap-3">
+  <label class="text-sm font-semibold text-gray-600">View store for seller:</label>
+  <select id="seller-select" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+    <option value="">Select seller…</option>
+  </select>
+  <button onclick="loadSeller()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">Load</button>
+</div>
+
+<div id="seller-content" class="hidden fade-in space-y-5">
+
+  <!-- Trust score header -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-5">
+      <div class="flex items-center gap-4">
+        <div id="sv-avatar" class="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center text-2xl font-black text-indigo-600"></div>
+        <div>
+          <h2 id="sv-name" class="text-xl font-bold text-gray-900"></h2>
+          <div id="sv-meta" class="text-xs text-gray-400 mt-0.5"></div>
+        </div>
+      </div>
+      <div class="sm:ml-auto flex items-center gap-5">
+        <div class="text-center">
+          <div id="sv-score" class="text-4xl font-black"></div>
+          <div class="text-xs text-gray-400">Trust Score</div>
+        </div>
+        <div id="sv-ring" class="trust-ring"></div>
+        <div id="sv-badge" class="badge text-sm font-bold"></div>
+      </div>
+    </div>
+    <div class="mt-4">
+      <div class="h-3 bg-gray-100 rounded-full overflow-hidden">
+        <div id="sv-bar" class="progress-bar h-full rounded-full" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between text-xs text-gray-300 mt-1"><span>0</span><span>40 Caution</span><span>70 Safe</span><span>100</span></div>
+    </div>
+    <div id="sv-rec" class="mt-3 text-sm font-medium text-center rounded-xl py-2 px-4"></div>
+  </div>
+
+  <!-- Products + Complaints (tabs) -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="flex border-b border-gray-100">
+      <button class="tab-btn active" onclick="showTab('products',this)">📦 Products <span id="products-count" class="bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded-full ml-1"></span></button>
+      <button class="tab-btn" onclick="showTab('complaints',this)">📋 Complaints <span id="complaints-count" class="bg-gray-100 text-gray-500 text-xs px-1.5 py-0.5 rounded-full ml-1"></span></button>
+      <button class="tab-btn" onclick="showTab('signals',this)">📡 Signals</button>
+    </div>
+
+    <!-- Products tab -->
+    <div id="tab-products" class="p-5">
+      <div id="products-list"></div>
+    </div>
+
+    <!-- Complaints tab -->
+    <div id="tab-complaints" class="p-5 hidden">
+      <div id="complaints-list"></div>
+    </div>
+
+    <!-- Signals tab -->
+    <div id="tab-signals" class="p-5 hidden">
+      <div id="signals-list"></div>
+    </div>
+  </div>
+</div>
+
+<div id="loading-msg" class="hidden text-center py-10">
+  <div class="spinner mx-auto mb-2" style="width:30px;height:30px;border-width:3px"></div>
+  <p class="text-gray-400 text-sm">Loading store data…</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const INIT_SELLER_ID = {{ seller_id }};
+
+function escHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function scoreClass(s){return s>=70?'safe':s>=40?'caution':'risk';}
+function riskColor(r){return r==='Safe'?'bg-green-100 text-green-700':r==='Caution'?'bg-yellow-100 text-yellow-700':'bg-red-100 text-red-700';}
+function barColor(r){return r==='Safe'?'bg-green-500':r==='Caution'?'bg-yellow-500':'bg-red-500';}
+
+function showTab(name, btn) {
+  ['products','complaints','signals'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('hidden', t!==name);
+  });
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function loadSellers() {
+  const sellers = await fetch('/sellers/all').then(r=>r.json());
+  const sel = document.getElementById('seller-select');
+  sel.innerHTML = '<option value="">Select seller…</option>' +
+    sellers.map(s=>`<option value="${s.id}" ${s.id==INIT_SELLER_ID?'selected':''}>${escHtml(s.name)} (ID: ${s.id})</option>`).join('');
+  if (INIT_SELLER_ID) {
+    sel.value = INIT_SELLER_ID;
+    loadSeller();
+  }
+}
+
+async function loadSeller() {
+  const sid = document.getElementById('seller-select').value || INIT_SELLER_ID;
+  if (!sid) return;
+  document.getElementById('seller-content').classList.add('hidden');
+  document.getElementById('loading-msg').classList.remove('hidden');
+
+  try {
+    const [adv, products, complaints] = await Promise.all([
+      fetch(`/advisory/seller/${sid}`).then(r=>r.json()),
+      fetch(`/products/seller/${sid}`).then(r=>r.json()).catch(()=>[]),
+      fetch(`/complaints/seller/${sid}`).then(r=>r.json()).catch(()=>[]),
+    ]);
+
+    document.getElementById('loading-msg').classList.add('hidden');
+    document.getElementById('seller-content').classList.remove('hidden');
+
+    const score = adv.trust_score;
+    const risk  = adv.risk_level;
+
+    document.getElementById('sv-avatar').textContent = (adv.seller_name||'?')[0].toUpperCase();
+    document.getElementById('sv-name').textContent   = adv.seller_name;
+    document.getElementById('sv-meta').textContent   = `Account age: ${adv.account_age_days} days`;
+    document.getElementById('sv-score').textContent  = score;
+    document.getElementById('sv-score').className    = `text-4xl font-black ${score>=70?'text-green-600':score>=40?'text-yellow-600':'text-red-600'}`;
+
+    const ring = document.getElementById('sv-ring');
+    ring.textContent = score;
+    ring.className   = `trust-ring ${scoreClass(score)}`;
+
+    document.getElementById('sv-badge').textContent = risk;
+    document.getElementById('sv-badge').className   = `badge text-sm font-bold ${riskColor(risk)}`;
+
+    const bar = document.getElementById('sv-bar');
+    bar.className = `progress-bar h-full rounded-full ${barColor(risk)}`;
+    setTimeout(()=>bar.style.width=`${score}%`, 100);
+
+    const rec = document.getElementById('sv-rec');
+    rec.textContent = adv.recommendation;
+    rec.className   = `mt-3 text-sm font-medium text-center rounded-xl py-2 px-4 ${risk==='Safe'?'bg-green-50 text-green-700':risk==='Caution'?'bg-yellow-50 text-yellow-700':'bg-red-50 text-red-700'}`;
+
+    // Products
+    document.getElementById('products-count').textContent = products.length;
+    document.getElementById('products-list').innerHTML = products.length
+      ? products.map(p=>`
+        <div class="flex items-center justify-between border border-gray-100 rounded-xl p-3 mb-2 hover:border-indigo-200 transition-colors">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
+              ${p.image_path?`<img src="/${p.image_path}" class="w-full h-full object-cover" onerror="this.parentElement.textContent='📦'">`:'📦'}
+            </div>
+            <div>
+              <div class="font-semibold text-gray-800 text-sm">${escHtml(p.title)}</div>
+              <div class="text-xs text-gray-400">$${p.price.toFixed(2)} <span class="line-through">$${p.market_price.toFixed(2)}</span></div>
+            </div>
+          </div>
+          <a href="/product/${p.id}" class="text-xs text-indigo-500 hover:underline">View →</a>
+        </div>`).join('')
+      : `<div class="text-center py-8 text-gray-400 text-sm">No products listed</div>`;
+
+    // Complaints
+    document.getElementById('complaints-count').textContent = complaints.length;
+    document.getElementById('complaints-list').innerHTML = complaints.length
+      ? complaints.map(c=>`
+        <div class="border border-gray-100 rounded-xl p-4 mb-3">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm text-gray-700">${escHtml(c.complaint_text)}</p>
+              <div class="flex flex-wrap gap-2 mt-2">
+                <span class="badge badge-${c.status}">${c.status}</span>
+                <span class="badge badge-${c.admin_status}">${c.admin_status}</span>
+                <span class="badge badge-${c.processing_status}">${c.processing_status}</span>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-xs text-gray-400">Severity</div>
+              <div class="font-bold text-lg ${c.severity_level>=4?'text-red-600':c.severity_level>=3?'text-orange-500':'text-yellow-600'}">${c.severity_level}/5</div>
+              <div class="text-xs text-gray-400 mt-1">Mismatch</div>
+              <div class="font-bold text-sm">${(c.visual_mismatch_score*100).toFixed(0)}%</div>
+            </div>
+          </div>
+          <div class="mt-2 text-xs text-gray-400">${new Date(c.created_at).toLocaleDateString()}</div>
+        </div>`).join('')
+      : `<div class="text-center py-8 text-gray-400 text-sm"><span class="block text-2xl mb-2">✅</span>No complaints</div>`;
+
+    // Signals
+    const s = adv.signals;
+    document.getElementById('signals-list').innerHTML = `
+      <div class="grid grid-cols-2 gap-3">
+        ${[
+          ['Open Complaints', s.open_complaints, '📋'],
+          ['Total Complaints', s.total_complaints, '🗂'],
+          ['Avg Severity', s.avg_severity.toFixed(2)+'/5', '⭐'],
+          ['Visual Mismatch', (s.mean_visual_mismatch*100).toFixed(1)+'%', '🤖'],
+          ['Price Anomaly', s.has_price_anomaly?'⚠ Detected':'✓ Normal', '💰'],
+          ['Complaint Freq', s.complaint_frequency.toFixed(3)+'/mo', '⚡'],
+          ['Weighted Risk', (s.weighted_risk*100).toFixed(1)+'%', '🎯'],
+          ['Account Age', s.account_age_days+' days', '📅'],
+        ].map(([label,val,icon])=>`
+          <div class="signal-card">
+            <span class="text-lg">${icon}</span>
+            <div class="text-xs text-gray-500 mt-1">${label}</div>
+            <div class="font-bold text-gray-800 text-sm mt-0.5">${val}</div>
+          </div>`).join('')}
+      </div>
+      <div class="mt-4 text-xs text-gray-400 text-center">
+        <a href="/seller/${sid}" class="text-indigo-500 hover:underline">View full trust dashboard →</a>
+      </div>`;
+
+  } catch(e) {
+    document.getElementById('loading-msg').innerHTML = `<p class="text-red-500 text-sm">Failed to load seller data</p>`;
+  }
+}
+
+loadSellers();
+</script>
+{% endblock %}

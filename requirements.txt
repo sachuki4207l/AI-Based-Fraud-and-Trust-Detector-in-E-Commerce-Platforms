@@ -1,0 +1,29 @@
+# ── Web framework ─────────────────────────────────────────────────────────────
+fastapi
+uvicorn[standard]
+
+# ── Database ──────────────────────────────────────────────────────────────────
+sqlalchemy
+# PostgreSQL driver (install when using PostgreSQL):
+# psycopg2-binary
+
+# ── Templates & file handling ─────────────────────────────────────────────────
+jinja2
+python-multipart
+aiofiles
+
+# ── AI / Vision ───────────────────────────────────────────────────────────────
+torch
+torchvision
+Pillow
+# CLIP (primary AI model — preferred over ResNet):
+openai-clip
+
+# ── Data / validation ────────────────────────────────────────────────────────
+pydantic
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest
+pytest-asyncio
+httpx
+requests
