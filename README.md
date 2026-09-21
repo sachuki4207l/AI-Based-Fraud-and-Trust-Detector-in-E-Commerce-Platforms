@@ -226,7 +226,7 @@ PUT /admin/complaints/{id}/spam     → Fraud → buyer -8 cred
 | Name | GitHub |
 |------|--------|
 | Alwin John Shajan | [@AlwinJCOde667](https://github.com/AlwinJCOde667) |
-| Alan K J| [@alwin-kj](https://github.com/alan-kj) |
+| Alan K J| [@alan-kj](https://github.com/alan-kj) |
 | Aadhinath V S| [@sachuki4207](https://github.com/sachuki4207) |
 
 B.Tech Computer Science & Engineering, Sahrdaya College of Engineering and Technology
